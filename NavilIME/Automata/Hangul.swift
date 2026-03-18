@@ -201,7 +201,7 @@ class Hangul {
     static func Get_keyboard318() -> Keyboard318? {
         return Hangul.hangul_keyboard[0] as? Keyboard318
     }
-    static func Get_keyboard318() -> Keyboard390? {
+    static func Get_keyboard390() -> Keyboard390? {
         return Hangul.hangul_keyboard[1] as? Keyboard390
     }
     static func Get_keyboard002() -> Keyboard002? {

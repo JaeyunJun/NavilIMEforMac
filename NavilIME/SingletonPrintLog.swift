@@ -15,9 +15,10 @@ class PrintLog {
     
     private init() { }
     
-    func Log(log:String) {
-        if let scv = self.scrollView {
-            scv.documentView?.insertText(log + "\n")
+    func Log(log: @autoclosure () -> String) {
+        guard let scv = self.scrollView else {
+            return
         }
+        scv.documentView?.insertText(log() + "\n")
     }
 }

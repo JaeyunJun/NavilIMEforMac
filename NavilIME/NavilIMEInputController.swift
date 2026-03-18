@@ -134,8 +134,21 @@ open class NavilIMEInputController: IMKInputController {
     func update_display(client:Any!, backspace:Bool = false, additional:String = "") {
         let commit_unicode:[unichar] = self.hangul.GetCommit()
         let preedit_unicode:[unichar] = self.hangul.GetPreedit()
-        var commited:String = String(utf16CodeUnits:commit_unicode , count: commit_unicode.count)
-        let preediting:String = String(utf16CodeUnits: preedit_unicode, count: preedit_unicode.count)
+        
+        // 출력할 내용이 전혀 없으면 IMKTextInput 호출을 건너뛴다.
+        if commit_unicode.isEmpty && preedit_unicode.isEmpty && additional.isEmpty && backspace == false {
+            return
+        }
+        
+        var commited:String = ""
+        if commit_unicode.isEmpty == false {
+            commited = String(utf16CodeUnits:commit_unicode , count: commit_unicode.count)
+        }
+        
+        var preediting:String = ""
+        if preedit_unicode.isEmpty == false {
+            preediting = String(utf16CodeUnits: preedit_unicode, count: preedit_unicode.count)
+        }
         
         PrintLog.shared.Log(log: "C:'\(commited)' - \(commited.count) P:'\(preediting)' - \(preediting.count)")
         
@@ -146,14 +159,14 @@ open class NavilIMEInputController: IMKInputController {
         commited += additional
         
         let build_count = 302
-        if commited.count != 0 {
+        if commited.isEmpty == false {
             disp.insertText(commited, replacementRange: NSRange(location: NSNotFound, length: NSNotFound))
             
             PrintLog.shared.Log(log: "\(build_count) Commit: \(commited)")
         }
         
         // replacementRange 가 아래 코드와 같아야만 잘 동작한다.
-        if (preediting.count != 0) || (backspace == true) {
+        if (preediting.isEmpty == false) || (backspace == true) {
             // 백스페이스로 글자를 지울 때, preddition.count == 0 인 상태가 되는데
             // 이 때 명시적으로 length = 0 인 NSRange를 setMarkedText()에 주어야만 자연스럽게 처리된다.
             let sr = NSRange(location: 0, length: preediting.count)

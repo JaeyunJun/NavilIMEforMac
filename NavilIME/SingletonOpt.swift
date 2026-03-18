@@ -64,7 +64,6 @@ class OptHandler {
     func HanEng_hotkey(sel:Int) {
         hotkey_radio_tag = sel
         UserDefaults.standard.set(hotkey_radio_tag, forKey: hotkeys_db_key)
-        UserDefaults.standard.synchronize()
     }
     
     func Is_han_eng_changed(keycode:uint16, modi:NSEvent.ModifierFlags) -> Bool {
@@ -104,4 +103,3 @@ class OptHandler {
         return false
     }
 }
-

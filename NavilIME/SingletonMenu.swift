@@ -21,7 +21,6 @@ class HangulMenu {
     func change_selected_keyboard(id:Int) {
         self.selected_keyboard = id
         UserDefaults.standard.set(id, forKey: user_default_key)
-        UserDefaults.standard.synchronize()
     }
     
     private init() {

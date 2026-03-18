@@ -65,7 +65,6 @@ class Keyboard002 : Keyboard {
     func sel_no_shift(sel:Int) {
         self.sel_cho_layout = sel
         UserDefaults.standard.set(self.sel_cho_layout, forKey: key002_sel_no_shift_db_key)
-        UserDefaults.standard.synchronize()
         
         self.chosung_layout = self.cho_layouts[self.sel_cho_layout]
     }
