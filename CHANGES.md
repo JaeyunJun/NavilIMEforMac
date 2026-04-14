@@ -1,5 +1,9 @@
 # NavilIME 개인 수정 기록
 
+이 프로젝트는 **Manwoo Yi**([@navilera](https://github.com/navilera))님이 만든 macOS용 한글 입력기입니다.
+세벌식 318Na 자판을 직접 디자인하고, 리눅스/윈도우/맥 전부 입력기를 직접 구현하신 분입니다.
+아래는 개인 용도로 포크하여 수정한 내용입니다.
+
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
 ## 2026-04-14 - 대규모 정리 및 개선
