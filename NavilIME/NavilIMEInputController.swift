@@ -12,34 +12,43 @@ open class NavilIMEInputController: IMKInputController {
     let key_code:String =       "asdfhgzxcv\tbqweryt123465=97-80]ou[ip\tlj'k;\\,/nm.\t `"
     let shift_key_code:String = "ASDFHGZXCV\tBQWERYT!@#$^%+(&_*)}OU{IP\tLJ\"K:|<?NM>\t ~"
     
-    var hangul:Hangul!
-    
+    var hangul:Hangul?
+
+    // 특수 키 조합 테이블: (keycode, modifier, 출력 문자)
+    let special_keys: [(UInt16, NSEvent.ModifierFlags, String)] = [
+        (0x35, .shift,   "~"),  // Shift+ESC → ~
+        (0x35, .command, "`"),  // Cmd+ESC → `
+        (0x2A, .command, "₩"), // Cmd+\ → ₩
+    ]
+
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
-        
+
         PrintLog.shared.Log(log: "Server Activated")
         self.hangul = Hangul()
-        self.hangul.Start(type: HangulMenu.shared.selected_keyboard)
+        self.hangul?.Start()
     }
-    
+
     override open func deactivateServer(_ sender: Any!) {
         super.deactivateServer(sender)
-        
+
         PrintLog.shared.Log(log: "Server deactivating")
-        
-        self.hangul.Flush()
+
+        self.hangul?.Flush()
         self.update_display(client: sender)
-        
-        self.hangul.Stop()
+
+        self.hangul?.Stop()
     }
     
     override open func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
+        guard self.hangul != nil else { return false }
+
         if OptHandler.shared.Is_han_eng_changed(keycode: event.keyCode, modi: event.modifierFlags) {
-            self.hangul.ToggleSuspend()
+            self.hangul?.ToggleSuspend()
             self.commitComposition(sender)
             return true
         }
-        
+
         switch event.type {
         case .keyDown:
             let eaten = self.keydown_event_handler(event: event, client: sender)
@@ -56,75 +65,76 @@ open class NavilIMEInputController: IMKInputController {
     }
     
     func keydown_event_handler(event:NSEvent, client:Any!) -> Bool {
+        guard let hangul = self.hangul else { return false }
+
         let keycode = event.keyCode
         let flag = event.modifierFlags
-        
+
+        // 특수 키 조합은 hotfix 버퍼에 넣지 않고 바로 처리
+        for sk in self.special_keys {
+            if keycode == sk.0 && flag.contains(sk.1) {
+                hangul.Flush()
+                self.update_display(client: client, additional: sk.2)
+                return true
+            }
+        }
+
         // 특정 패턴 입력은 한글로 변환하지 않는다.
         Hotfix.shared.add(keycode)
-        let is_matched = Hotfix.shared.check()
-        if is_matched == true {
+        if Hotfix.shared.check() {
             return false
         }
-        
+
         if flag.contains(.command)
             || flag.contains(.option)
             || flag.contains(.control) {
             PrintLog.shared.Log(log: "Modikey - \(keycode) with \(flag.rawValue)")
             return false
         }
-        
-        let enter_return = 0x24 // MacOS defined
-        let tab = 0x30          // MacOS defined
+
+        let enter_return:UInt16 = 0x24
+        let tab:UInt16 = 0x30
         if keycode == enter_return || keycode == tab {
             PrintLog.shared.Log(log: "Enter or Tab")
-            
-            self.hangul.Flush()
+
+            hangul.Flush()
             self.update_display(client: client)
-            
+
             return false
         }
-        
-        let backspace = 0x33    // MacOS defined
+
+        let backspace:UInt16 = 0x33
         if keycode == backspace {
             PrintLog.shared.Log(log: "Backspace")
-            
-            let remain = self.hangul.Backspace()
-            if remain == true {
+
+            let remain = hangul.Backspace()
+            if remain {
                 self.update_display(client: client, backspace: true)
             }
             return remain
         }
-        
+
         if keycode >= self.key_code.count {
             PrintLog.shared.Log(log: "Bypassd keycode: \(keycode) >= \(self.key_code.count)")
-            
-            self.hangul.Flush()
+
+            hangul.Flush()
             self.update_display(client: client)
-            
+
             return false
         }
-        
+
         let ascii_idx = self.key_code.index(self.key_code.startIndex, offsetBy: Int(keycode))
-        var ascii = self.key_code[ascii_idx] // String(describing: event.characters))
-        let shift:Bool = flag.contains(.shift)
-        if shift == true {
+        var ascii = self.key_code[ascii_idx]
+        if flag.contains(.shift) {
             ascii = self.shift_key_code[ascii_idx]
         }
-        
-        let is_hangul:Bool = self.hangul.Process(ascii: String(ascii))
+
+        let is_hangul:Bool = hangul.Process(ascii: String(ascii))
         if is_hangul == false {
             PrintLog.shared.Log(log: "Not Hangul: \(ascii)")
-            
-            self.hangul.Flush()
-            
-            // 기호가 다른 키보드에서 나빌 입력기를 쓸 때, 기본 기호가 아닌 다른 기호가 나온다.
-            // 나빌 입력기는 기본 키코드에 해당하는 기호를 그대로 출력한다.
-            var extra:String = String(ascii)
-            // 390 자판처럼 숫자나 기호를 한글 자판에 별도로 맵핑한 경우, 별도 API로 기호를 바꾼다.
-            if let etc = hangul.Additional(ascii: String(ascii)) {
-                extra = etc
-            }
-            self.update_display(client: client, backspace: false, additional: extra)
+
+            hangul.Flush()
+            self.update_display(client: client, backspace: false, additional: String(ascii))
         } else {
             self.update_display(client: client)
         }
@@ -132,8 +142,8 @@ open class NavilIMEInputController: IMKInputController {
     }
     
     func update_display(client:Any!, backspace:Bool = false, additional:String = "") {
-        let commit_unicode:[unichar] = self.hangul.GetCommit()
-        let preedit_unicode:[unichar] = self.hangul.GetPreedit()
+        let commit_unicode:[unichar] = self.hangul?.GetCommit() ?? []
+        let preedit_unicode:[unichar] = self.hangul?.GetPreedit() ?? []
         
         // 출력할 내용이 전혀 없으면 IMKTextInput 호출을 건너뛴다.
         if commit_unicode.isEmpty && preedit_unicode.isEmpty && additional.isEmpty && backspace == false {
@@ -185,7 +195,7 @@ open class NavilIMEInputController: IMKInputController {
      */
     override open func commitComposition(_ sender: Any!) {
         PrintLog.shared.Log(log: "Commit Composition")
-        self.hangul.Flush()
+        self.hangul?.Flush()
         self.update_display(client: sender)
     }
     
@@ -231,31 +241,7 @@ open class NavilIMEInputController: IMKInputController {
      인터넷 그 어디에도 공식적인 문서 자료가 없다. 내가 삽질해서 찾은 것임.
      */
     @objc func select_menu(_ sender:Any?) {
-        guard let menuitem = sender as? Dictionary<String, Any> else {
-            PrintLog.shared.Log(log: "WTF \(sender.debugDescription)")
-            return
-        }
-        
-        if let kbd:NSMenuItem = menuitem["IMKCommandMenuItem"] as? NSMenuItem {
-            PrintLog.shared.Log(log: "Selected Keyboard: \(kbd.title)")
-            if kbd.tag == OptHandler.shared.opt_menu_tag {
-                PrintLog.shared.Log(log: "This is Option: \(kbd.title)")
-                self.hangul.Flush()
-                OptHandler.shared.Open_opt_window(sender)
-                return
-            }
-            HangulMenu.shared.change_selected_keyboard(id: kbd.tag)
-            for mi in HangulMenu.shared.menu.items {
-                mi.state = NSControl.StateValue.off
-            }
-            kbd.state = NSControl.StateValue.on
-            
-            // 바꾼 한글 자판을 즉시 적용
-            self.hangul.Flush()
-            self.hangul.Stop()
-            self.hangul.Start(type: HangulMenu.shared.selected_keyboard)
-        } else {
-            PrintLog.shared.Log(log: "Not NSMenuItem????")
-        }
+        self.hangul?.Flush()
+        OptHandler.shared.Open_opt_window(sender)
     }
 }

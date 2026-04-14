@@ -29,12 +29,11 @@ class OptHandler {
     
     func Open_opt_window(_ sender:Any?) {
         if dubul_no_shift_checkbox != nil {
-            if let dubul = Hangul.Get_keyboard002() {
-                if dubul.sel_cho_layout == 0 {
-                    dubul_no_shift_checkbox?.state = NSControl.StateValue.off
-                } else {
-                    dubul_no_shift_checkbox?.state = NSControl.StateValue.on
-                }
+            let dubul = Hangul.keyboard002
+            if dubul.sel_cho_layout == 0 {
+                dubul_no_shift_checkbox?.state = NSControl.StateValue.off
+            } else {
+                dubul_no_shift_checkbox?.state = NSControl.StateValue.on
             }
         }
         
@@ -56,9 +55,7 @@ class OptHandler {
     func Dubul_no_shift(sel:Int) {
         // sel 이 0 이면 no shift: ㄸㄸㄸ 로 입력됨
         // sel 이 1 이면 shift: ㄷㄷㄷ 로 입력됨
-        if let dubul = Hangul.Get_keyboard002() {
-                dubul.sel_no_shift(sel: sel)
-        }
+        Hangul.keyboard002.sel_no_shift(sel: sel)
     }
     
     func HanEng_hotkey(sel:Int) {

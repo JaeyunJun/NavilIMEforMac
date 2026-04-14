@@ -19,48 +19,20 @@
                 <outlet property="nothing_radio" destination="ejH-sn-zqu" id="ygS-wK-Rhn"/>
                 <outlet property="right_cmd" destination="fXG-ca-Nsa" id="t1y-nz-ntE"/>
                 <outlet property="right_opt" destination="aAq-eS-jsh" id="C71-da-gaW"/>
-                <outlet property="scrollView" destination="7WT-xm-G8f" id="H33-V3-8ZD"/>
                 <outlet property="shift_space_radio" destination="o4m-7Z-7tt" id="7ii-Ew-Zm5"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="gIp-Ho-8D9"/>
             </connections>
         </customObject>
         <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
-        <window title="NavilIME" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
+        <window title="NavilIME 옵션" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="474" height="517"/>
+            <rect key="contentRect" x="335" y="390" width="474" height="210"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1470" height="919"/>
             <view key="contentView" id="EiT-Mj-1SZ">
-                <rect key="frame" x="0.0" y="0.0" width="474" height="517"/>
+                <rect key="frame" x="0.0" y="0.0" width="474" height="210"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
-                    <scrollView fixedFrame="YES" borderType="none" horizontalLineScroll="10" horizontalPageScroll="10" verticalLineScroll="10" verticalPageScroll="10" hasHorizontalScroller="NO" translatesAutoresizingMaskIntoConstraints="NO" id="7WT-xm-G8f">
-                        <rect key="frame" x="13" y="212" width="448" height="298"/>
-                        <autoresizingMask key="autoresizingMask"/>
-                        <clipView key="contentView" drawsBackground="NO" id="JVZ-Ji-tNK">
-                            <rect key="frame" x="0.0" y="0.0" width="448" height="298"/>
-                            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                            <subviews>
-                                <textView importsGraphics="NO" richText="NO" verticallyResizable="YES" smartInsertDelete="YES" id="Qen-Ja-R88">
-                                    <rect key="frame" x="0.0" y="0.0" width="448" height="298"/>
-                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                    <color key="textColor" name="textColor" catalog="System" colorSpace="catalog"/>
-                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                                    <size key="minSize" width="448" height="298"/>
-                                    <size key="maxSize" width="448" height="10000000"/>
-                                    <color key="insertionPointColor" name="textColor" catalog="System" colorSpace="catalog"/>
-                                </textView>
-                            </subviews>
-                        </clipView>
-                        <scroller key="horizontalScroller" hidden="YES" wantsLayer="YES" verticalHuggingPriority="750" horizontal="YES" id="Jmr-6c-Swd">
-                            <rect key="frame" x="-100" y="-100" width="240" height="16"/>
-                            <autoresizingMask key="autoresizingMask"/>
-                        </scroller>
-                        <scroller key="verticalScroller" wantsLayer="YES" verticalHuggingPriority="750" horizontal="NO" id="ch7-5n-dLA">
-                            <rect key="frame" x="432" y="0.0" width="16" height="298"/>
-                            <autoresizingMask key="autoresizingMask"/>
-                        </scroller>
-                    </scrollView>
                     <box fixedFrame="YES" title="두벌식 옵션" translatesAutoresizingMaskIntoConstraints="NO" id="M3X-8K-Wj8">
                         <rect key="frame" x="12" y="16" width="450" height="77"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
