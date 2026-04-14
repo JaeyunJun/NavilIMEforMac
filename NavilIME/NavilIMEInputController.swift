@@ -40,8 +40,19 @@ open class NavilIMEInputController: IMKInputController {
         self.hangul?.Stop()
     }
     
+    // hangul이 없거나 automata가 nil이면 복구한다.
+    // macOS가 activateServer 없이 handle을 호출하는 경우 대비.
+    func ensureHangulReady() {
+        if self.hangul == nil {
+            self.hangul = Hangul()
+        }
+        if self.hangul?.automata == nil {
+            self.hangul?.Start()
+        }
+    }
+
     override open func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
-        guard self.hangul != nil else { return false }
+        self.ensureHangulReady()
 
         if OptHandler.shared.Is_han_eng_changed(keycode: event.keyCode, modi: event.modifierFlags) {
             self.hangul?.ToggleSuspend()
