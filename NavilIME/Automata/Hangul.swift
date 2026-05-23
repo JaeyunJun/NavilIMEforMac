@@ -252,13 +252,14 @@ class Hangul {
         self.automata = automata
     }
 
-    func GetPreedit() -> [unichar] {
+    // 내부 버퍼를 비우고 반환한다는 점을 이름에 드러낸다 (get → take).
+    func takePreedit() -> [unichar] {
         let ret:[unichar] = self.preediting
         self.preediting = []
         return ret
     }
 
-    func GetCommit() -> [unichar] {
+    func takeCommit() -> [unichar] {
         let ret:[unichar] = self.committed
         self.committed = []
         return ret

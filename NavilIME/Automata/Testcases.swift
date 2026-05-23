@@ -6,11 +6,8 @@
 //
 
 import Foundation
-import Cocoa
 
 class TestCase {
-
-    var stdout_gui:NSScrollView?
 
     func test_debug(hangul:Hangul, t:String, ch:String, expect_commit:[String], expect_preedit: [String]) {
         var eaten:Bool = true
@@ -38,8 +35,8 @@ class TestCase {
             actual_commit.append(ch)
         }
 
-        let commit_unicode:[unichar] = hangul.GetCommit()
-        let preedit_unicode:[unichar] = hangul.GetPreedit()
+        let commit_unicode:[unichar] = hangul.takeCommit()
+        let preedit_unicode:[unichar] = hangul.takePreedit()
         var commited:String = String(utf16CodeUnits:commit_unicode , count: commit_unicode.count)
         let preediting:String = String(utf16CodeUnits: preedit_unicode, count: preedit_unicode.count)
 
@@ -53,10 +50,6 @@ class TestCase {
         assert(expect_commit == actual_commit)
         assert(expect_preedit == actual_preedit)
         _ = hangul.GetDebug(t: "clean")
-
-        if let out_gui = self.stdout_gui {
-            out_gui.documentView?.insertText(result_str + "\n")
-        }
     }
 }
 

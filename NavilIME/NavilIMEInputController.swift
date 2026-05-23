@@ -67,7 +67,7 @@ open class NavilIMEInputController: IMKInputController {
                 self.commitComposition(sender)
             }
             return eaten
-        case .leftMouseDown, .leftMouseUp, .leftMouseDragged, .rightMouseDown, .rightMouseUp, .rightMouseDragged:
+        case .leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp:
             self.commitComposition(sender)
         default:
             PrintLog.shared.Log(log: "unhandled event keycode=\(event.keyCode) modi=\(event.modifierFlags.rawValue)")
@@ -91,9 +91,12 @@ open class NavilIMEInputController: IMKInputController {
         }
 
         // 특정 패턴 입력은 한글로 변환하지 않는다.
-        Hotfix.shared.add(keycode)
-        if Hotfix.shared.check() {
-            return false
+        // 단축키(cmd/option/control)와 함께 들어온 keycode는 hotfix 패턴에 섞으면 false-positive가 생기므로 제외.
+        if !flag.contains(.command) && !flag.contains(.option) && !flag.contains(.control) {
+            Hotfix.shared.add(keycode)
+            if Hotfix.shared.check() {
+                return false
+            }
         }
 
         if flag.contains(.command)
@@ -153,8 +156,8 @@ open class NavilIMEInputController: IMKInputController {
     }
     
     func update_display(client:Any!, backspace:Bool = false, additional:String = "") {
-        let commit_unicode:[unichar] = self.hangul?.GetCommit() ?? []
-        let preedit_unicode:[unichar] = self.hangul?.GetPreedit() ?? []
+        let commit_unicode:[unichar] = self.hangul?.takeCommit() ?? []
+        let preedit_unicode:[unichar] = self.hangul?.takePreedit() ?? []
         
         // 출력할 내용이 전혀 없으면 IMKTextInput 호출을 건너뛴다.
         if commit_unicode.isEmpty && preedit_unicode.isEmpty && additional.isEmpty && backspace == false {
@@ -190,7 +193,8 @@ open class NavilIMEInputController: IMKInputController {
         if (preediting.isEmpty == false) || (backspace == true) {
             // 백스페이스로 글자를 지울 때, preddition.count == 0 인 상태가 되는데
             // 이 때 명시적으로 length = 0 인 NSRange를 setMarkedText()에 주어야만 자연스럽게 처리된다.
-            let sr = NSRange(location: 0, length: preediting.count)
+            // NSRange.length는 UTF-16 단위. NFD로 분해된 한글은 grapheme count와 다르므로 NSString.length를 쓴다.
+            let sr = NSRange(location: 0, length: (preediting as NSString).length)
             let rr = NSRange(location: NSNotFound, length: NSNotFound)
             PrintLog.shared.Log(log: "RR: \(rr) SR: \(sr) on \(String(describing: disp.bundleIdentifier()))")
             disp.setMarkedText(preediting, selectionRange: sr, replacementRange: rr)
@@ -220,9 +224,9 @@ open class NavilIMEInputController: IMKInputController {
        이것은 기본값인 NSKeyDownMask만 반환하는 입력 메서드에서만 발생합니다.
      */
     override open func recognizedEvents(_ sender: Any!) -> Int {
+        // drag는 frame마다 들어와 매번 commit이 호출되므로 제외.
         return Int(NSEvent.EventTypeMask(arrayLiteral: .keyDown, .flagsChanged,
             .leftMouseUp, .rightMouseUp, .leftMouseDown, .rightMouseDown,
-            .leftMouseDragged, .rightMouseDragged,
             .appKitDefined, .applicationDefined, .systemDefined).rawValue)
     }
     

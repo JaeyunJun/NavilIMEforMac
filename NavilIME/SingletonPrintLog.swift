@@ -6,19 +6,16 @@
 //
 
 import Foundation
-import Cocoa
+import os.log
 
 class PrintLog {
     static let shared = PrintLog()
 
-    var scrollView: NSScrollView?
-    
+    private let logger = OSLog(subsystem: "io.navilera.NavilIME", category: "ime")
+
     private init() { }
-    
+
     func Log(log: @autoclosure () -> String) {
-        guard let scv = self.scrollView else {
-            return
-        }
-        scv.documentView?.insertText(log() + "\n")
+        os_log("%{public}@", log: self.logger, type: .debug, log())
     }
 }

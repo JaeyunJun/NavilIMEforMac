@@ -12,16 +12,16 @@ import InputMethodKit
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     // 두벌식 옵션 - ㄷㄷㄷ 입력
-    @IBOutlet weak var dubul_no_shift_checkbox: NSButton!
+    @IBOutlet weak var dubul_no_shift_checkbox: NSButton?
 
     // 한영전환 - 시스템 입력기 사용
-    @IBOutlet weak var nothing_radio: NSButton!
+    @IBOutlet weak var nothing_radio: NSButton?
     // 한영전환 - shift + space
-    @IBOutlet weak var shift_space_radio: NSButton!
+    @IBOutlet weak var shift_space_radio: NSButton?
     // 한영전환 - 오른쪽 cmd
-    @IBOutlet weak var right_cmd: NSButton!
+    @IBOutlet weak var right_cmd: NSButton?
     // 한영전환 - 오른쪽 opt
-    @IBOutlet weak var right_opt: NSButton!
+    @IBOutlet weak var right_opt: NSButton?
 
     var server = IMKServer()
 
@@ -37,11 +37,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 옵션 윈도우 - 두벌식 옵션 위젯 연결
         OptHandler.shared.dubul_no_shift_checkbox = self.dubul_no_shift_checkbox
 
-        // 옵션 윈도우 - 한영전환 옵션 연결
-        OptHandler.shared.hotkeys.append(self.nothing_radio)
-        OptHandler.shared.hotkeys.append(self.shift_space_radio)
-        OptHandler.shared.hotkeys.append(self.right_cmd)
-        OptHandler.shared.hotkeys.append(self.right_opt)
+        // 옵션 윈도우 - 한영전환 옵션 연결 (xib에서 위젯이 빠져있어도 크래시 없이 진행)
+        OptHandler.shared.hotkeys = [self.nothing_radio, self.shift_space_radio, self.right_cmd, self.right_opt].compactMap { $0 }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
