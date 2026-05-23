@@ -8,83 +8,39 @@
 import Foundation
 
 class Keyboard002 : Keyboard {
-    let no_shift_cho:[String:Chosung] = [
-        "Q":Chosung.SsBiep, "qq":Chosung.SsBiep,
-        "W":Chosung.SsJiek, "ww":Chosung.SsJiek,
-        "E":Chosung.SsDigek, "ee":Chosung.SsDigek,
-        "R":Chosung.SsGiyuk, "rr":Chosung.SsGiyuk,
-        "T":Chosung.SsSiot, "tt":Chosung.SsSiot,
-        
-        "q":Chosung.Biep,
-        "w":Chosung.Jiek,
-        "e":Chosung.Digek,
-        "r":Chosung.Giyuk,
-        "t":Chosung.Siot,
-        
-        "a":Chosung.Miem, "A":Chosung.Miem,
-        "s":Chosung.Nien, "S":Chosung.Nien,
-        "d":Chosung.Yieng, "D":Chosung.Yieng,
-        "f":Chosung.Riel, "F":Chosung.Riel,
-        "g":Chosung.Hiek, "G":Chosung.Hiek,
-        
-        "z":Chosung.Kiyuk, "Z":Chosung.Kiyuk,
-        "x":Chosung.Tigek, "X":Chosung.Tigek,
-        "c":Chosung.Chiek, "C":Chosung.Chiek,
-        "v":Chosung.Piep, "V":Chosung.Piep
-    ]
-    
+    // 쌍자음은 Shift 조합으로만 입력. 같은 자음 연타(예: dd)는 ㄷㄷ로 분리됨.
     let shift_cho:[String:Chosung] = [
         "Q":Chosung.SsBiep,
         "W":Chosung.SsJiek,
         "E":Chosung.SsDigek,
         "R":Chosung.SsGiyuk,
         "T":Chosung.SsSiot,
-        
+
         "q":Chosung.Biep,
         "w":Chosung.Jiek,
         "e":Chosung.Digek,
         "r":Chosung.Giyuk,
         "t":Chosung.Siot,
-        
+
         "a":Chosung.Miem, "A":Chosung.Miem,
         "s":Chosung.Nien, "S":Chosung.Nien,
         "d":Chosung.Yieng, "D":Chosung.Yieng,
         "f":Chosung.Riel, "F":Chosung.Riel,
         "g":Chosung.Hiek, "G":Chosung.Hiek,
-        
+
         "z":Chosung.Kiyuk, "Z":Chosung.Kiyuk,
         "x":Chosung.Tigek, "X":Chosung.Tigek,
         "c":Chosung.Chiek, "C":Chosung.Chiek,
         "v":Chosung.Piep, "V":Chosung.Piep
     ]
-    
-    let cho_layouts:[[String:Chosung]]
-    let key002_sel_no_shift_db_key = "002_sel_no_shift"
-    var sel_cho_layout:Int = 0
-    
-    func sel_no_shift(sel:Int) {
-        self.sel_cho_layout = sel
-        UserDefaults.standard.set(self.sel_cho_layout, forKey: key002_sel_no_shift_db_key)
-        
-        self.chosung_layout = self.cho_layouts[self.sel_cho_layout]
-    }
-    
+
     override init() {
-        self.cho_layouts = [self.no_shift_cho, self.shift_cho]
-        
         super.init()
-        
+
         self.name = "두벌식"
         self.id = 2
-        
-        // 초성 레이아웃
-        let saved_sel_no_shift = UserDefaults.standard.integer(forKey: key002_sel_no_shift_db_key)
-        if saved_sel_no_shift != 0 {
-            self.sel_cho_layout = 1
-        } else {
-            self.sel_cho_layout = 0
-        }
-        self.chosung_layout = self.cho_layouts[self.sel_cho_layout]
+
+        self.chosung_layout = self.shift_cho
         
         // 중성 레이아웃
         self.jungsung_layout = [

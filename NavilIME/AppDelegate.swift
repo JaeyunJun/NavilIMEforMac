@@ -11,9 +11,6 @@ import InputMethodKit
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-    // 두벌식 옵션 - ㄷㄷㄷ 입력
-    @IBOutlet weak var dubul_no_shift_checkbox: NSButton?
-
     // 한영전환 - 시스템 입력기 사용
     @IBOutlet weak var nothing_radio: NSButton?
     // 한영전환 - shift + space
@@ -34,23 +31,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             w.close()
         }
 
-        // 옵션 윈도우 - 두벌식 옵션 위젯 연결
-        OptHandler.shared.dubul_no_shift_checkbox = self.dubul_no_shift_checkbox
-
         // 옵션 윈도우 - 한영전환 옵션 연결 (xib에서 위젯이 빠져있어도 크래시 없이 진행)
         OptHandler.shared.hotkeys = [self.nothing_radio, self.shift_space_radio, self.right_cmd, self.right_opt].compactMap { $0 }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-    }
-
-    @IBAction func opt_dubul_sel_no_shift(_ sender: NSButton) {
-        let no_shift_checkbox = sender
-        if no_shift_checkbox.state == NSControl.StateValue.on {
-            OptHandler.shared.Dubul_no_shift(sel: 1)
-        } else {
-            OptHandler.shared.Dubul_no_shift(sel: 0)
-        }
     }
 
     @IBAction func opt_set_hotkey(_ sender: NSButton) {

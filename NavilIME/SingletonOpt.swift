@@ -14,29 +14,17 @@ class OptHandler {
     static let shared = OptHandler()
 
     let opt_menu_tag = 0xffff
-    
-    // 두벌식 옵션
-    var dubul_no_shift_checkbox: NSButton?
-    
+
     // 한영전환 옵션
     var hotkeys: [NSButton] = []
     let hotkeys_db_key = "han_eng_hotkey_opt"
     var hotkey_radio_tag = 0
-    
-    private init() { 
+
+    private init() {
         hotkey_radio_tag = UserDefaults.standard.integer(forKey: hotkeys_db_key)
     }
-    
+
     func Open_opt_window(_ sender:Any?) {
-        if dubul_no_shift_checkbox != nil {
-            let dubul = Hangul.keyboard002
-            if dubul.sel_cho_layout == 0 {
-                dubul_no_shift_checkbox?.state = NSControl.StateValue.off
-            } else {
-                dubul_no_shift_checkbox?.state = NSControl.StateValue.on
-            }
-        }
-        
         PrintLog.shared.Log(log: "Selected hotkey \(hotkey_radio_tag) - \(String(describing: self.hotkeys.count))")
         if hotkeys.count != 0 {
             for hk in hotkeys {
@@ -46,18 +34,12 @@ class OptHandler {
                 }
             }
         }
-        
+
         if let w = NSApplication.shared.windows.first {
             w.makeKeyAndOrderFront(sender)
         }
     }
-    
-    func Dubul_no_shift(sel:Int) {
-        // sel 이 0 이면 no shift: ㄸㄸㄸ 로 입력됨
-        // sel 이 1 이면 shift: ㄷㄷㄷ 로 입력됨
-        Hangul.keyboard002.sel_no_shift(sel: sel)
-    }
-    
+
     func HanEng_hotkey(sel:Int) {
         hotkey_radio_tag = sel
         UserDefaults.standard.set(hotkey_radio_tag, forKey: hotkeys_db_key)
