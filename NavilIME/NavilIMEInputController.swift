@@ -255,8 +255,12 @@ open class NavilIMEInputController: IMKInputController {
      거기서 NSMenuItem을 찾으려면 ["IMKCommandMenuItem"]으로 Dictionary에서 값을 가져와야 한다.
      인터넷 그 어디에도 공식적인 문서 자료가 없다. 내가 삽질해서 찾은 것임.
      */
-    @objc func select_menu(_ sender:Any?) {
+    @objc func select_haneng_hotkey(_ sender:Any?) {
         self.hangul?.Flush()
-        OptHandler.shared.Open_opt_window(sender)
+        guard let dict = sender as? [String: Any],
+              let item = dict["IMKCommandMenuItem"] as? NSMenuItem else {
+            return
+        }
+        HangulMenu.shared.set_hotkey(tag: item.tag)
     }
 }
