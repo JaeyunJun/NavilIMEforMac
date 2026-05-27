@@ -6,6 +6,32 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-05-27 - 전역 특수키 입력 및 개인 빌드 서명
+
+### 특수키 조합을 다른 입력기 상태에서도 동작 (전역)
+- `SpecialKeyTap`: 세션 레벨 `CGEventTap`으로 특수키 조합(`Shift+ESC→~`,
+  `Cmd+ESC→\``, `Cmd+\→₩`)을 전역에서 가로채 치환.
+- 현재 입력기가 NavilIME가 아닐 때만 가로채고, NavilIME 활성 시엔 기존 IMK
+  경로가 처리하도록 분기 → 이중 처리 방지.
+- 탭이 타임아웃/사용자 입력으로 비활성화되면 자동 재활성화.
+- App Sandbox에서는 전역 이벤트 탭이 막히므로 entitlements에서 `app-sandbox`를
+  끔. (App Store가 아닌 직접 설치 방식이라 무방)
+
+### 손쉬운 사용 권한 UI
+- `CGEventTap`은 손쉬운 사용(Accessibility) 권한이 필요.
+- 트레이 메뉴에 "특수키 전역 입력 권한 허용…" 항목 추가. 권한이 있으면
+  "특수키 전역 입력: 켜짐 ✓"로 표시(비활성).
+- 클릭 시 시스템 권한 요청 + 손쉬운 사용 설정 창 열기 + 안내 alert.
+  LSBackgroundOnly 환경에서도 표시되도록 활성화 정책을 잠시 올림.
+- 부팅 시 권한이 이미 있으면 탭 자동 시작.
+
+### 개인 빌드 서명 구조
+- `Signing.xcconfig`(기본 ad-hoc) + `Local.xcconfig.example`(템플릿) 도입.
+  실제 `Local.xcconfig`는 `.gitignore`로 커밋 제외 → 개인 Team ID 비공개.
+- pbxproj에서 하드코딩된 `DEVELOPMENT_TEAM`/`CODE_SIGN_IDENTITY` 제거,
+  `baseConfigurationReference`로 xcconfig 연결.
+- `.gitignore` 신설, 추적되던 `.DS_Store` 추적 해제.
+
 ## 2026-05-23 - 옵션 창 제거 및 안정성 라운드
 
 ### 옵션 창 제거, 한영전환 단축키를 트레이 메뉴로 통합

@@ -11,12 +11,20 @@
 - 트레이 메뉴에서 키보드 선택 제거
 - 두벌식 같은 자음 연속(ㄷㄷㄷ) 합치기 옵션 제거, 항상 분리 입력으로 고정
 
-### 특수키 조합 추가
+### 특수키 조합 추가 (전역 동작)
 | 키 조합 | 입력 |
 |---------|------|
 | Shift + ESC | `~` |
 | Cmd + ESC | `` ` `` |
 | Cmd + `\` | `₩` |
+
+- NavilIME가 활성일 때는 물론, **영문(ABC) 등 다른 입력기 상태에서도 동작**합니다.
+- 전역 동작은 `CGEventTap`으로 구현되며 **손쉬운 사용(Accessibility) 권한**이 필요합니다.
+  트레이 메뉴 → "특수키 전역 입력 권한 허용…"에서 설정하세요. 권한이 켜지면
+  메뉴 항목이 "특수키 전역 입력: 켜짐 ✓"로 바뀝니다(이 상태에선 클릭해도 안내창이
+  뜨지 않는 것이 정상입니다).
+- 전역 키 가로채기는 App Sandbox에서 동작하지 않으므로 이 포크는 샌드박스를 끕니다.
+  (App Store가 아닌 `~/Library/Input Methods` 직접 설치 방식이라 문제 없음)
 
 ### UI 단순화
 - 옵션 창 완전 제거
@@ -28,6 +36,32 @@
 - 디버깅 전용 UI 제거
 
 상세 변경 이력은 [CHANGES.md](CHANGES.md)를 참고하세요.
+
+## 빌드 / 설치 (개인용)
+
+### 코드 서명
+손쉬운 사용 권한은 앱의 코드 서명 신원에 묶입니다. 무서명(ad-hoc)으로 빌드하면
+재빌드할 때마다 권한이 초기화될 수 있으므로, 본인 Apple Development 신원으로
+서명하는 것을 권장합니다. **유료 개발자 계정은 필요 없고**, Xcode에 Apple ID를
+추가하면 생기는 무료 Personal Team으로 충분합니다.
+
+1. Xcode → Settings → Accounts 에서 본인 Apple ID 추가 → 무료 Personal Team 생성
+2. `NavilIME/Local.xcconfig.example`을 같은 폴더에 `Local.xcconfig`로 복사
+3. `Local.xcconfig`에 본인 `DEVELOPMENT_TEAM`(Team ID) 입력
+
+```
+# 본인 Team ID 확인
+security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+# 출력의 OU=XXXXXXXXXX 가 Team ID
+```
+
+`Local.xcconfig`는 `.gitignore`로 커밋되지 않으므로 개인 Team ID가 저장소에
+남지 않습니다. 파일이 없으면 ad-hoc 서명으로 빌드되며, 실행은 됩니다.
+
+### 설치
+빌드한 `NavilIME.app`을 `~/Library/Input Methods/`에 복사한 뒤, 시스템 설정 →
+키보드 → 입력 소스에서 NavilIME를 추가하고 재로그인(또는 입력기 재선택)합니다.
+전역 특수키를 쓰려면 손쉬운 사용 권한을 허용하세요(위 "특수키 조합 추가" 참고).
 
 ---
 
