@@ -2,9 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- App Sandbox를 끈다. CGEventTap(전역 키 가로채기)은 샌드박스에서 동작하지 않으며,
+         이 입력기는 App Store가 아니라 ~/Library/Input Methods에 직접 설치되므로 샌드박스가 필요 없다. -->
     <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.files.user-selected.read-only</key>
-    <true/>
+    <false/>
 </dict>
 </plist>

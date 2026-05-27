@@ -18,6 +18,9 @@ class HangulMenu {
     // tag는 OptHandler.Is_han_eng_changed가 해석하는 hotkey_radio_tag와 동일.
     let hotkey_items:[NSMenuItem]
 
+    // 특수키(₩, ~, `) 전역 입력 권한 상태/허용 항목. menu()가 그릴 때마다 갱신한다.
+    let permission_item:NSMenuItem
+
     private init() {
         self.menu = NSMenu()
 
@@ -47,13 +50,32 @@ class HangulMenu {
         }
 
         self.hotkey_items = items
+
+        self.menu.addItem(NSMenuItem.separator())
+        let perm = NSMenuItem()
+        perm.action = #selector(NavilIMEInputController.grant_special_key_permission(_:))
+        self.permission_item = perm
+        self.menu.addItem(perm)
+
         self.menu.autoenablesItems = true
+        self.refresh_permission_state()
     }
 
     func set_hotkey(tag:Int) {
         OptHandler.shared.HanEng_hotkey(sel: tag)
         for it in self.hotkey_items {
             it.state = (it.tag == tag) ? .on : .off
+        }
+    }
+
+    // 권한이 있으면 안내 문구만 보여주고(비활성), 없으면 허용 동작을 노출한다.
+    func refresh_permission_state() {
+        if SpecialKeyTap.shared.isTrusted {
+            permission_item.title = "특수키 전역 입력: 켜짐 ✓"
+            permission_item.isEnabled = false
+        } else {
+            permission_item.title = "특수키 전역 입력 권한 허용…"
+            permission_item.isEnabled = true
         }
     }
 }

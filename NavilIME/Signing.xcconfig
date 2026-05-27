@@ -1,0 +1,16 @@
+// 코드 서명 설정 — 개인 빌드용 베이스 설정
+//
+// 기본값은 ad-hoc(로컬 전용) 서명이다. 이대로도 빌드/실행은 되지만,
+// 손쉬운 사용(Accessibility) 권한이 재빌드 때마다 초기화될 수 있다.
+//
+// 권한을 재빌드 후에도 유지하려면 본인 Apple Development 신원으로 서명해야 한다.
+// 이 폴더에 Local.xcconfig 파일을 만들고(Local.xcconfig.example 참고) 본인
+// DEVELOPMENT_TEAM을 적으면 된다. Local.xcconfig는 .gitignore로 커밋되지 않으므로
+// 개인 Team ID가 저장소에 남지 않는다.
+
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+
+// 있으면 덮어쓴다(없어도 에러 없음). 항상 마지막에 둔다.
+#include? "Local.xcconfig"

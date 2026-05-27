@@ -245,6 +245,9 @@ open class NavilIMEInputController: IMKInputController {
      이 메서드는 입력 메서드가 현재 상태를 반영하도록 메뉴를 업데이트할 수 있도록 메뉴를 그려야 할 때마다 호출됩니다.
      */
    override open func menu() -> NSMenu! {
+        // 권한이 방금 허용됐다면 탭을 켜고, 메뉴 표시 상태도 갱신한다.
+        SpecialKeyTap.shared.startIfTrusted()
+        HangulMenu.shared.refresh_permission_state()
         return HangulMenu.shared.menu
    }
     
@@ -262,5 +265,38 @@ open class NavilIMEInputController: IMKInputController {
             return
         }
         HangulMenu.shared.set_hotkey(tag: item.tag)
+    }
+
+    // 특수키(₩, ~, `)를 다른 입력기 상태에서도 쓰려면 손쉬운 사용 권한이 필요하다.
+    // 권한 안내 팝업을 띄우고, 시스템 설정의 손쉬운 사용 창을 연다.
+    @objc func grant_special_key_permission(_ sender:Any?) {
+        if SpecialKeyTap.shared.isTrusted {
+            SpecialKeyTap.shared.startIfTrusted()
+            return
+        }
+
+        // OS가 직접 띄우는 시스템 권한 창(가장 확실한 경로)을 먼저 트리거하고,
+        // 손쉬운 사용 설정 창도 연다. 이 둘은 백그라운드 앱(LSBackgroundOnly)에서도 동작한다.
+        SpecialKeyTap.shared.requestPermissionPrompt()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+
+        // 설명용 NSAlert. LSBackgroundOnly에서는 창이 앞으로 안 올 수 있어,
+        // 잠깐 활성화 정책을 accessory로 올려 확실히 표시되게 한다.
+        let prevPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.activate(ignoringOtherApps: true)
+
+        let alert = NSAlert()
+        alert.messageText = "특수키 전역 입력 권한이 필요합니다"
+        alert.informativeText = "₩, ~, ` 같은 특수키 조합을 영문 등 다른 입력기 상태에서도 쓰려면 "
+            + "‘손쉬운 사용’ 권한이 필요합니다.\n\n"
+            + "열린 시스템 설정의 ‘손쉬운 사용’ 목록에서 NavilIME를 켠 뒤, 입력기를 한 번 "
+            + "전환하거나 다시 로그인하면 적용됩니다."
+        alert.addButton(withTitle: "확인")
+        alert.runModal()
+
+        NSApp.setActivationPolicy(prevPolicy)
     }
 }

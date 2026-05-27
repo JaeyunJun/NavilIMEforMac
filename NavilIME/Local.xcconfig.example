@@ -1,0 +1,14 @@
+// 개인 서명 설정 템플릿.
+//
+// 이 파일을 같은 폴더에 "Local.xcconfig" 라는 이름으로 복사한 뒤 본인 값으로 채우세요.
+// Local.xcconfig 는 .gitignore 에 의해 커밋되지 않습니다.
+//
+// 본인 Team ID 확인 방법(터미널):
+//   security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+//   → 출력의 OU=XXXXXXXXXX 가 본인 Team ID 입니다.
+//
+// Apple Development 인증서가 없다면 Xcode > Settings > Accounts 에서
+// 본인 Apple ID 를 추가하면 무료로 생성됩니다(유료 개발자 계정 불필요).
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+CODE_SIGN_IDENTITY = Apple Development
