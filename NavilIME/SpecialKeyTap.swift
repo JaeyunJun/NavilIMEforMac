@@ -9,6 +9,11 @@
 //  막는다. 동작하려면 App Sandbox가 꺼져 있어야 하고 손쉬운 사용(Accessibility)
 //  권한이 허용돼야 한다.
 //
+//  [중요] 탭은 전용 스레드의 런루프에서 돈다. IMK 입력 경로(NavilIMEInputController.handle)는
+//  메인 스레드에서 도는데, 시스템 전역 keyDown 탭을 메인 런루프에 걸면 모든 키 입력이
+//  메인 스레드를 동기 통과하게 되어, 메인 스레드가 바쁜 순간 입력/전환 지연이 생긴다.
+//  그래서 탭은 메인이 아닌 별도 스레드로 분리한다. (TIS 조회 비용도 탭 스레드에서만 소비된다.)
+//
 
 import Cocoa
 import ApplicationServices
@@ -34,6 +39,10 @@ class SpecialKeyTap {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
+    // 탭은 메인이 아닌 전용 스레드의 런루프에서 돈다.
+    private var tapThread: Thread?
+    private var tapRunLoop: CFRunLoop?
+
     private init() {}
 
     var isTrusted: Bool {
@@ -41,7 +50,7 @@ class SpecialKeyTap {
     }
 
     var isRunning: Bool {
-        return eventTap != nil
+        return tapThread != nil
     }
 
     // 손쉬운 사용 권한이 있으면 탭을 켠다. 권한이 없으면 시스템 권한 요청 다이얼로그를 띄운다.
@@ -53,17 +62,46 @@ class SpecialKeyTap {
 
     // 권한이 있으면(그리고 아직 안 켜졌으면) 탭을 시작한다.
     func startIfTrusted() {
-        guard isTrusted, eventTap == nil else { return }
+        guard isTrusted, tapThread == nil else { return }
         start()
     }
 
     func start() {
-        guard eventTap == nil else { return }
+        guard tapThread == nil else { return }
         guard isTrusted else {
             PrintLog.shared.Log(log: "SpecialKeyTap: not trusted, tap not created")
             return
         }
 
+        // 전용 스레드의 런루프에서 탭을 돌려 메인 스레드(IMK 입력 경로)와 분리한다.
+        let thread = Thread { [weak self] in
+            guard let self = self else { return }
+            guard self.createTap() else { return }
+            self.tapRunLoop = CFRunLoopGetCurrent()
+            PrintLog.shared.Log(log: "SpecialKeyTap: started (dedicated thread)")
+            CFRunLoopRun()
+            self.teardownTap()
+            PrintLog.shared.Log(log: "SpecialKeyTap: stopped")
+        }
+        thread.name = "io.navilera.NavilIME.SpecialKeyTap"
+        thread.qualityOfService = .userInteractive
+        tapThread = thread
+        thread.start()
+    }
+
+    func stop() {
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
+        if let rl = tapRunLoop {
+            CFRunLoopStop(rl)
+        }
+        tapThread = nil
+        tapRunLoop = nil
+    }
+
+    // 탭 스레드에서 실행. 런루프 소스를 현재(전용) 런루프에 단다.
+    private func createTap() -> Bool {
         let mask = (1 << CGEventType.keyDown.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
 
@@ -80,24 +118,22 @@ class SpecialKeyTap {
             userInfo: refcon
         ) else {
             PrintLog.shared.Log(log: "SpecialKeyTap: tapCreate failed")
-            return
+            return false
         }
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
 
-        self.eventTap = tap
-        self.runLoopSource = source
-        PrintLog.shared.Log(log: "SpecialKeyTap: started")
+        eventTap = tap
+        runLoopSource = source
+        return true
     }
 
-    func stop() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-        }
+    // 탭 스레드에서 실행. 런루프가 멈춘 뒤 정리한다.
+    private func teardownTap() {
         if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
         }
         eventTap = nil
         runLoopSource = nil
@@ -115,6 +151,7 @@ class SpecialKeyTap {
         guard type == .keyDown else { return Unmanaged.passUnretained(event) }
 
         // NavilIME가 활성 입력기면 IMK 경로가 처리하므로 건드리지 않는다.
+        // 콜백이 탭 전용 스레드에서 돌므로, 여기서 TIS를 조회해도 메인 스레드는 영향받지 않는다.
         if currentInputSourceIsNavil() {
             return Unmanaged.passUnretained(event)
         }

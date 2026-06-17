@@ -30,14 +30,16 @@ open class NavilIMEInputController: IMKInputController {
     }
 
     override open func deactivateServer(_ sender: Any!) {
-        super.deactivateServer(sender)
-
         PrintLog.shared.Log(log: "Server deactivating")
 
+        // 세션을 정리(super)하기 전에 조합 중이던 글자를 이전 client로 먼저 확정한다.
+        // super를 먼저 부르면 포커스가 새 앱으로 넘어간 뒤 commit돼, 그 글자가
+        // 새 창(예: Raycast)으로 새어 "이전 입력기 것과 섞이는" 현상이 생길 수 있다.
         self.hangul?.Flush()
         self.update_display(client: sender)
-
         self.hangul?.Stop()
+
+        super.deactivateServer(sender)
     }
     
     // hangul이 없거나 automata가 nil이면 복구한다.
