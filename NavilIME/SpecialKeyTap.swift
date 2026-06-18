@@ -150,22 +150,23 @@ class SpecialKeyTap {
 
         guard type == .keyDown else { return Unmanaged.passUnretained(event) }
 
-        // NavilIME가 활성 입력기면 IMK 경로가 처리하므로 건드리지 않는다.
-        // 콜백이 탭 전용 스레드에서 돌므로, 여기서 TIS를 조회해도 메인 스레드는 영향받지 않는다.
+        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
+        let flags = event.flags
+
+        // 특수키 조합 후보가 아니면(거의 모든 키) TIS 조회 없이 즉시 통과한다.
+        guard let combo = combos.first(where: { keyCode == $0.keyCode && flags.contains($0.flag) }) else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        // 후보일 때만 NavilIME 활성 여부를 확인한다. NavilIME가 활성이면 IMK 경로가
+        // 처리하므로 탭은 건드리지 않는다. (TIS 조회가 사실상 특수키를 누를 때만 일어남)
         if currentInputSourceIsNavil() {
             return Unmanaged.passUnretained(event)
         }
 
-        let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
-        let flags = event.flags
-
-        for combo in combos where keyCode == combo.keyCode && flags.contains(combo.flag) {
-            event.flags = CGEventFlags(rawValue: 0)
-            let utf16 = Array(combo.output.utf16)
-            event.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
-            return Unmanaged.passUnretained(event)
-        }
-
+        event.flags = CGEventFlags(rawValue: 0)
+        let utf16 = Array(combo.output.utf16)
+        event.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
         return Unmanaged.passUnretained(event)
     }
 
