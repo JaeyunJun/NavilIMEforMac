@@ -86,7 +86,7 @@ open class NavilIMEInputController: IMKInputController {
         //
         // [주의] secure input은 프로세스 전역 참조 카운트라, 어떤 앱이 켜놓고 끄지 않으면
         // 한글이 어디서도 조합되지 않는다. 그 증상이면 화면을 잠갔다 풀면 풀린다.
-        if IsSecureEventInputEnabled() {
+        if IsSecureEventInputEnabled() || TTYPasswordWatcher.shared.isPasswordPromptActive() {
             hangul.Flush()
             self.update_display(client: client)
             return false

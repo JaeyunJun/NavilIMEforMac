@@ -20,6 +20,7 @@
 		CF6561FF28D1AE6F0085AC8D /* Testcases.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF6561FE28D1AE6F0085AC8D /* Testcases.swift */; };
 		CF714A5B28E6C273000CBDEE /* SingletonMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF714A5A28E6C273000CBDEE /* SingletonMenu.swift */; };
 		CFA10B01000000000000A002 /* SpecialKeyTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA10B00000000000000A001 /* SpecialKeyTap.swift */; };
+		CFA10B01000000000000BB01 /* TTYPasswordWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFA10B00000000000000FF01 /* TTYPasswordWatcher.swift */; };
 		CF8F931D2D718F5300955352 /* navilime.png in Resources */ = {isa = PBXBuildFile; fileRef = CF8F931C2D718F5300955352 /* navilime.png */; };
 /* End PBXBuildFile section */
 
@@ -40,6 +41,7 @@
 		CF6561FE28D1AE6F0085AC8D /* Testcases.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Testcases.swift; sourceTree = "<group>"; };
 		CF714A5A28E6C273000CBDEE /* SingletonMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingletonMenu.swift; sourceTree = "<group>"; };
 		CFA10B00000000000000A001 /* SpecialKeyTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpecialKeyTap.swift; sourceTree = "<group>"; };
+		CFA10B00000000000000FF01 /* TTYPasswordWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTYPasswordWatcher.swift; sourceTree = "<group>"; };
 		CFA10B02000000000000A003 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
 		CFA10B03000000000000A004 /* Local.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Local.xcconfig.example; sourceTree = "<group>"; };
 		CF8F931C2D718F5300955352 /* navilime.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = navilime.png; sourceTree = "<group>"; };
@@ -82,6 +84,7 @@
 				CF3237BC28D1AACE008941FE /* SingletonPrintLog.swift */,
 				CF714A5A28E6C273000CBDEE /* SingletonMenu.swift */,
 				CFA10B00000000000000A001 /* SpecialKeyTap.swift */,
+				CFA10B00000000000000FF01 /* TTYPasswordWatcher.swift */,
 				CF482861291A21DD0020EC2B /* SingletonHotfix.swift */,
 				CF34BD8A29D6C0A200F69E9E /* SingletonOpt.swift */,
 				CF39BCA328C42D7300CB35AE /* Assets.xcassets */,
@@ -186,6 +189,7 @@
 				CF6561F928D1AE240085AC8D /* Hangul.swift in Sources */,
 				CF714A5B28E6C273000CBDEE /* SingletonMenu.swift in Sources */,
 				CFA10B01000000000000A002 /* SpecialKeyTap.swift in Sources */,
+				CFA10B01000000000000BB01 /* TTYPasswordWatcher.swift in Sources */,
 				CF39BCAF28C49BDA00CB35AE /* NavilIMEInputController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

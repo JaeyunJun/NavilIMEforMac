@@ -40,17 +40,28 @@
 - macOS는 secure input을 켤 뿐 **입력 소스를 영문으로 갈아주지는 않습니다.** (측정으로 확인)
   그래서 입력기가 직접 비켜서야 합니다.
 
-**터미널 `sudo`는 예외입니다.** 터미널 앱이 pty의 에코 상태를 보지 않아 secure input을
-켜지 않기 때문에, 아무도 그 순간이 암호 프롬프트인 줄 모릅니다. `Tools/secure-run`이
-그 구멍을 메웁니다:
+**터미널의 `sudo`·`ssh`·`git` 프롬프트도 자동으로 처리합니다.** 터미널 앱은 pty 상태를
+보지 않아 secure input을 켜주지 않으므로, 입력기가 직접 tty를 봅니다:
+
+| 프로그램 | 터미널 모드 | 에코 | 판정 |
+|---|---|---|---|
+| `cat` (평범한 입력) | 정규 | on | — |
+| `getpass`·`sudo`·`ssh` | **정규** | **OFF** | **암호 프롬프트** |
+| `vi`·`top` (TUI) | raw | OFF | 오탐 아님 |
+
+비밀번호를 읽는 프로그램은 tty를 **정규 모드 + 에코 끔**으로 만들고, 전체화면 TUI는
+raw 모드라 구분됩니다. 그래서 `sudo`뿐 아니라 `ssh`, `git` 자격증명, `passwd`, `su`,
+python `getpass` 등 **에코를 끄고 비밀번호를 읽는 모든 것**이 커버됩니다.
+감지하면 `EnableSecureEventInput()`을 켜므로 그동안 다른 앱의 이벤트 탭도 차단됩니다.
+
+셸 설정은 필요 없습니다. 앱을 빌드해서 설치하면 그대로 동작합니다.
+
+`Tools/secure-run`은 감지가 안 먹는 상황을 위한 **수동 탈출구**로 남겨뒀습니다.
+`secure-run <명령>` 형태로 임의의 명령을 감쌀 수 있습니다.
 
 ```sh
-./Tools/install.sh     # ~/.local/bin 에 secure-run, secure-test 설치 + .zshrc 스니펫 출력
+./Tools/install.sh     # ~/.local/bin 에 secure-run, secure-test 설치
 ```
-
-출력된 스니펫(`Tools/zshrc-snippet.sh`)을 `~/.zshrc`에 붙이면 `sudo` 암호 프롬프트
-**동안만** secure input이 켜지고, 위 동작이 그대로 걸립니다. `sudo -v`로 암호 확인만
-감싸므로 `sudo vim` 같은 걸 써도 편집 중에는 한글이 정상 동작합니다.
 
 동작이 깨졌는지 확인할 때는 `secure-test`를 쓰면 됩니다. secure input을 켠 채로
 에코는 남겨두고 한 줄을 받으므로, 비밀번호 없이 "입력기가 비켜서는가"를 눈으로

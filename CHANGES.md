@@ -6,6 +6,33 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-08-31 - 터미널 암호 프롬프트 자동 감지 (TTYPasswordWatcher)
+
+### sudo 외에 ssh·git·passwd 등도 커버, 셸 설정 불필요
+- 기존 방식(`secure-run` + `.zshrc` 래퍼)은 명령별로 감싸야 했고 `sudo`만 실용적이었다.
+  `ssh`는 세션 전체를 감싸게 되어 원격 접속 내내 한글을 못 쓰게 되므로 쓸 수 없었다.
+- 비밀번호를 읽는 프로그램은 tty를 **정규 모드(ICANON) + 에코 끔(ECHO off)** 으로 만들고,
+  전체화면 TUI는 raw 모드(ICANON off)라 구분된다. 실측 확인:
+
+  | 프로그램 | 모드 | 에코 | 판정 |
+  |---|---|---|---|
+  | `cat` | 정규 | on | — |
+  | `getpass` | 정규 | OFF | 암호 프롬프트 |
+  | `vi` | raw | OFF | TUI (오탐 아님) |
+  | `top` | raw | OFF | TUI (오탐 아님) |
+
+- `TTYPasswordWatcher`가 사용자 소유 `/dev/ttys*`를 훑어 이 상태를 찾으면
+  `EnableSecureEventInput()`을 켠다. 조합이 멈추는 것은 물론, 그동안 다른 앱의
+  이벤트 탭까지 차단되어 실제 키로거 방어가 된다. 조건이 풀리면 즉시 해제하고,
+  앱 종료 시에도 해제한다(우리가 켠 만큼만 끄도록 보유 여부를 추적).
+- tty는 `O_NOCTTY | O_NONBLOCK`으로 열어 controlling terminal이 되지 않게 한다.
+- 비용: 1회 스캔 약 515µs(대부분 tty open 비용, 하나당 ~57µs — 목록을 캐시해도 줄지 않음).
+  타이머는 1초 주기(약 0.05% CPU), 키 입력 경로는 100ms TTL 캐시로 확인해 프롬프트 직후
+  첫 글자도 놓치지 않는다.
+- 종단 검증: pty로 `getpass`를 띄우면 secure input이 켜지고 종료 시 해제, `top`(TUI)에는
+  반응하지 않음을 확인.
+- `Tools/secure-run`은 감지가 안 먹는 상황용 수동 탈출구로 남긴다.
+
 ## 2026-08-31 - 암호 프롬프트에서 입력기 자동 비켜서기
 
 ### 한글 상태에서 sudo 비밀번호가 안 들어가던 문제
