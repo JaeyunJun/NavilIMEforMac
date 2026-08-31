@@ -63,6 +63,15 @@ python `getpass` 등 **에코를 끄고 비밀번호를 읽는 모든 것**이 �
 ./Tools/install.sh     # ~/.local/bin 에 secure-run, secure-test 설치
 ```
 
+무엇에 반응했는지 추적하려면 `Tools/tty-password-log.py`를 띄워두면 됩니다.
+암호 프롬프트 상태가 생길 때마다 어떤 tty에서 어떤 프로그램 때문인지 남깁니다.
+한글이 갑자기 안 조합되면 이 로그를 보고, `sudo`·`ssh` 같은 게 아니면 오탐입니다.
+
+```sh
+nohup python3 Tools/tty-password-log.py > ~/Library/Logs/NavilIME-tty.log 2>&1 &
+tail -f ~/Library/Logs/NavilIME-tty.log
+```
+
 동작이 깨졌는지 확인할 때는 `secure-test`를 쓰면 됩니다. secure input을 켠 채로
 에코는 남겨두고 한 줄을 받으므로, 비밀번호 없이 "입력기가 비켜서는가"를 눈으로
 확인할 수 있습니다. 한글 상태로 `abcd`를 쳐서 `[abcd]`가 나오면 정상입니다.
