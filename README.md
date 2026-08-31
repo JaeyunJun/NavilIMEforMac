@@ -45,12 +45,16 @@
 그 구멍을 메웁니다:
 
 ```sh
-./Tools/install.sh     # ~/.local/bin/secure-run 설치 + .zshrc 스니펫 출력
+./Tools/install.sh     # ~/.local/bin 에 secure-run, secure-test 설치 + .zshrc 스니펫 출력
 ```
 
 출력된 스니펫(`Tools/zshrc-snippet.sh`)을 `~/.zshrc`에 붙이면 `sudo` 암호 프롬프트
 **동안만** secure input이 켜지고, 위 동작이 그대로 걸립니다. `sudo -v`로 암호 확인만
 감싸므로 `sudo vim` 같은 걸 써도 편집 중에는 한글이 정상 동작합니다.
+
+동작이 깨졌는지 확인할 때는 `secure-test`를 쓰면 됩니다. secure input을 켠 채로
+에코는 남겨두고 한 줄을 받으므로, 비밀번호 없이 "입력기가 비켜서는가"를 눈으로
+확인할 수 있습니다. 한글 상태로 `abcd`를 쳐서 `[abcd]`가 나오면 정상입니다.
 
 > 참고: secure input은 프로세스 전역 참조 카운트입니다. 어떤 앱이 켜놓고 끄지 않으면
 > 한글이 어디서도 조합되지 않고 특수키 전역 입력도 멈춥니다. 그 증상이면 화면을

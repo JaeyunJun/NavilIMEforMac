@@ -4,8 +4,10 @@ set -e
 DIR=$(cd "$(dirname "$0")" && pwd)
 DEST="$HOME/.local/bin"
 mkdir -p "$DEST"
-swiftc -O "$DIR/secure-run.swift" -o "$DEST/secure-run"
-echo "설치됨: $DEST/secure-run"
+for tool in secure-run secure-test; do
+  swiftc -O "$DIR/$tool.swift" -o "$DEST/$tool"
+  echo "설치됨: $DEST/$tool"
+done
 echo
 echo "다음을 ~/.zshrc 에 추가하면 sudo 암호 프롬프트에서 입력기가 자동으로 비켜선다:"
 echo
