@@ -9,6 +9,7 @@ for tool in secure-run secure-test; do
   echo "설치됨: $DEST/$tool"
 done
 echo
-echo "다음을 ~/.zshrc 에 추가하면 sudo 암호 프롬프트에서 입력기가 자동으로 비켜선다:"
+echo "암호 프롬프트 감지는 앱(TTYPasswordWatcher)이 자동으로 합니다 — 셸 설정은 필요 없습니다."
+echo "감지가 안 먹는 명령이 있으면 'secure-run <명령>' 으로 직접 감싸면 됩니다."
 echo
-sed -n '/^# >>> NavilIME/,/^# <<< NavilIME/p' "$DIR/zshrc-snippet.sh"
+echo "sudo를 항상 감싸고 싶다면 zshrc-snippet.sh 의 함수를 ~/.zshrc 에 넣으세요 (선택)."

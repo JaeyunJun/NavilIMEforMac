@@ -1,4 +1,6 @@
 # >>> NavilIME secure-run >>>
+# [선택] 앱의 TTYPasswordWatcher가 암호 프롬프트를 자동 감지하므로 보통은 불필요하다.
+# 감지가 안 먹는 환경에서만 쓰는 대체 수단.
 # sudo 암호 프롬프트 동안만 secure input을 켠다.
 # → NavilIME가 스스로 조합을 멈춰 영문이 들어가고, 그 순간 이벤트 탭도 차단된다.
 # sudo -v 는 암호만 확인하고 즉시 끝나므로 프롬프트 동안만 잡힌다.
