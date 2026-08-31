@@ -84,6 +84,15 @@ tail -f ~/Library/Logs/NavilIME-tty.log
 - 옵션 창 완전 제거
 - 한/영 전환 단축키 설정을 트레이 메뉴로 통합 (라디오 항목)
 
+### 보안
+
+- Release 빌드는 `get-task-allow` 엔타이틀먼트를 갖지 않습니다. Xcode가 개발 인증서
+  서명 시 자동 주입하는 것인데, 이게 있으면 Hardened Runtime이 켜져 있어도 다른
+  프로세스가 디버거를 붙일 수 있습니다. 입력기는 모든 키 입력을 지나보내므로
+  `Signing.xcconfig`에서 Release에 한해 주입을 끕니다.
+- 입력 내용은 어디에도 기록되지 않습니다. 로그는 Release에서 컴파일 단계에서 제거되고,
+  네트워크 코드도 입력을 파일로 쓰는 경로도 없습니다.
+
 ### 안정성 개선
 - force unwrap 제거하여 입력기 크래시 방어
 - 죽은 NSScrollView 로그를 `os_log`로 교체 (Console.app에서 `io.navilera.NavilIME`로 필터)

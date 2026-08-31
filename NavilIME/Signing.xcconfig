@@ -8,6 +8,14 @@
 // DEVELOPMENT_TEAM을 적으면 된다. Local.xcconfig는 .gitignore로 커밋되지 않으므로
 // 개인 Team ID가 저장소에 남지 않는다.
 
+// Xcode는 Apple Development 인증서로 서명할 때 get-task-allow 엔타이틀먼트를 자동으로
+// 주입한다. 이건 "다른 프로세스가 이 앱에 디버거를 붙여도 된다"는 뜻이라, Hardened
+// Runtime이 켜져 있어도 디버거 접근이 열린다. 입력기는 모든 키 입력을 지나보내고
+// 손쉬운 사용 권한까지 갖고 있으므로, 사용자 권한으로 도는 악성코드가 여기에 붙어
+// 키 입력을 읽거나 이 앱의 권한에 편승할 수 있다.
+// Release에서는 주입을 끈다. (Debug는 Xcode 디버깅을 위해 그대로 둔다.)
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
+
 CODE_SIGN_STYLE = Automatic
 CODE_SIGN_IDENTITY = -
 DEVELOPMENT_TEAM =

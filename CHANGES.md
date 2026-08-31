@@ -6,6 +6,18 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-08-31 - Release 빌드에서 get-task-allow 제거
+
+- Xcode는 Apple Development 인증서로 서명할 때 `com.apple.security.get-task-allow`를
+  자동 주입한다(`CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES`). 이건 "다른 프로세스가
+  디버거를 붙여도 된다"는 뜻이라, Hardened Runtime(`flags=0x10000(runtime)`)이
+  켜져 있어도 디버거 접근이 열린다.
+- 입력기는 모든 키 입력을 지나보내고 손쉬운 사용 권한까지 갖고 있으므로, 사용자 권한으로
+  도는 악성코드가 여기에 붙어 키 입력을 읽거나 이 앱의 TCC 권한에 편승할 수 있다.
+- `Signing.xcconfig`에 `CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO`를
+  추가해 Release에서만 주입을 끈다. Debug는 Xcode 디버깅을 위해 그대로 둔다.
+- 확인: Release 빌드의 entitlements가 `app-sandbox = false` 하나만 남았다.
+
 ## 2026-08-31 - 터미널 암호 프롬프트 자동 감지 (TTYPasswordWatcher)
 
 ### sudo 외에 ssh·git·passwd 등도 커버, 셸 설정 불필요
