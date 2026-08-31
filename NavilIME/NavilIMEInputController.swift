@@ -6,6 +6,7 @@
 //
 
 import InputMethodKit
+import Carbon
 
 @objc(NavilIMEInputController)
 open class NavilIMEInputController: IMKInputController {
@@ -13,13 +14,6 @@ open class NavilIMEInputController: IMKInputController {
     let shift_key_code:String = "ASDFHGZXCV\tBQWERYT!@#$^%+(&_*)}OU{IP\tLJ\"K:|<?NM>\t ~"
     
     var hangul:Hangul?
-
-    // 특수 키 조합 테이블: (keycode, modifier, 출력 문자)
-    let special_keys: [(UInt16, NSEvent.ModifierFlags, String)] = [
-        (0x35, .shift,   "~"),  // Shift+ESC → ~
-        (0x35, .command, "`"),  // Cmd+ESC → `
-        (0x2A, .command, "₩"), // Cmd+\ → ₩
-    ]
 
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
@@ -83,13 +77,28 @@ open class NavilIMEInputController: IMKInputController {
         let keycode = event.keyCode
         let flag = event.modifierFlags
 
-        // 특수 키 조합은 hotfix 버퍼에 넣지 않고 바로 처리
-        for sk in self.special_keys {
-            if keycode == sk.0 && flag.contains(sk.1) {
-                hangul.Flush()
-                self.update_display(client: client, additional: sk.2)
-                return true
-            }
+        // secure input이 켜진 동안(sudo 암호 프롬프트, 잠금 해제, 암호 필드 등)에는
+        // 조합하지 않고 키를 그대로 흘려보낸다. macOS는 이 상황에서 입력 소스를 영문으로
+        // 갈아주지 않으므로(확인함), 입력기가 스스로 비켜야 암호가 제대로 들어간다.
+        //
+        // 한/영 상태(ToggleSuspend)는 건드리지 않는다 — 프롬프트를 빠져나오면 원래
+        // 한글 상태로 알아서 돌아온다. 호출 비용은 ~4ns라 매 키 입력마다 확인해도 무방하다.
+        //
+        // [주의] secure input은 프로세스 전역 참조 카운트라, 어떤 앱이 켜놓고 끄지 않으면
+        // 한글이 어디서도 조합되지 않는다. 그 증상이면 화면을 잠갔다 풀면 풀린다.
+        if IsSecureEventInputEnabled() {
+            hangul.Flush()
+            self.update_display(client: client)
+            return false
+        }
+
+        // SpecialKeyTap이 치환한 이벤트는 keycode가 아니라 문자가 진실이다.
+        // 탭은 모디파이어만 지우고 유니코드를 갈아끼우므로 keycode는 원래 키(예: Cmd+\의 0x2A)
+        // 그대로 남는다. 이걸 아래 key_code 테이블로 재해석하면 ₩ 대신 \ 가 나온다.
+        if let chars = event.characters, SpecialKeyTap.outputs.contains(chars) {
+            hangul.Flush()
+            self.update_display(client: client, additional: chars)
+            return true
         }
 
         // 특정 패턴 입력은 한글로 변환하지 않는다.
@@ -269,7 +278,7 @@ open class NavilIMEInputController: IMKInputController {
         HangulMenu.shared.set_hotkey(tag: item.tag)
     }
 
-    // 특수키(₩, ~, `)를 다른 입력기 상태에서도 쓰려면 손쉬운 사용 권한이 필요하다.
+    // 특수키(₩, ~, `)는 전역 이벤트 탭이 유일한 처리 경로라 손쉬운 사용 권한이 필요하다.
     // 권한 안내 팝업을 띄우고, 시스템 설정의 손쉬운 사용 창을 연다.
     @objc func grant_special_key_permission(_ sender:Any?) {
         if SpecialKeyTap.shared.isTrusted {
@@ -292,8 +301,8 @@ open class NavilIMEInputController: IMKInputController {
 
         let alert = NSAlert()
         alert.messageText = "특수키 전역 입력 권한이 필요합니다"
-        alert.informativeText = "₩, ~, ` 같은 특수키 조합을 영문 등 다른 입력기 상태에서도 쓰려면 "
-            + "‘손쉬운 사용’ 권한이 필요합니다.\n\n"
+        alert.informativeText = "₩, ~, ` 같은 특수키 조합을 쓰려면 "
+            + "‘손쉬운 사용’ 권한이 필요합니다. 한글·영문 어느 입력기에서든 이 권한이 있어야 동작합니다.\n\n"
             + "열린 시스템 설정의 ‘손쉬운 사용’ 목록에서 NavilIME를 켠 뒤, 입력기를 한 번 "
             + "전환하거나 다시 로그인하면 적용됩니다."
         alert.addButton(withTitle: "확인")

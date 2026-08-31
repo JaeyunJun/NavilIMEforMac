@@ -6,6 +6,63 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-08-31 - 암호 프롬프트에서 입력기 자동 비켜서기
+
+### 한글 상태에서 sudo 비밀번호가 안 들어가던 문제
+- macOS는 secure input이 켜져도 **입력 소스를 영문으로 갈아주지 않는다**(측정으로 확인:
+  sudo 프롬프트 동안 `IsSecureEventInputEnabled() == true`인데 현재 입력 소스는
+  `com.navilera.inputmethod.NavilIME` 그대로였다). 그래서 한글 상태면 암호가 한글로
+  들어가고, 사용자가 매번 수동으로 영문 전환해야 했다.
+- `keydown_event_handler` 진입부에서 `IsSecureEventInputEnabled()`를 확인해, 켜져 있으면
+  조합 없이 키를 그대로 통과시킨다(`Flush()` 후 `return false`).
+- 한/영 상태(`ToggleSuspend`)는 건드리지 않는다. 프롬프트를 빠져나오면 원래 한글 상태로
+  자동 복귀한다.
+- 호출 비용은 약 4ns(로컬 플래그 읽기)로 측정돼 매 키 입력 경로에 두어도 무방하다.
+- 부작용: secure input은 프로세스 전역 참조 카운트라, 어떤 앱이 켜놓고 끄지 않으면 한글이
+  어디서도 조합되지 않는다. 화면 잠갔다 풀면 해소된다.
+
+### 터미널 sudo용 보조 도구 `Tools/secure-run`
+- 측정 결과 터미널의 sudo 프롬프트는 secure input을 켜지 않는다(터미널이 pty 에코 상태를
+  보지 않음). 그래서 위 수정만으로는 sudo 자리가 메워지지 않는다.
+- `secure-run <명령>`: 그 명령이 도는 동안만 secure input을 켠다. 어떤 시그널로 끝나든
+  `atexit`/시그널 핸들러로 반드시 되돌린다(켠 채 죽으면 시스템 전역으로 남기 때문).
+- `Tools/zshrc-snippet.sh`의 sudo 래퍼는 `sudo -v`(암호 확인만 하고 즉시 종료)를 감싸므로
+  프롬프트 동안만 잡힌다. `sudo vim` 편집 중에는 한글이 정상 동작한다.
+- `Tools/install.sh`로 `~/.local/bin`에 빌드·설치.
+- 자식은 `posix_spawnp`를 attr 없이 직접 호출해 띄운다. Foundation의 `Process`는 자식을
+  새 프로세스 그룹(세션)에 넣는데, 그러면 자식이 포그라운드 그룹이 아니게 되어 sudo가
+  tty에서 암호를 읽으려는 순간 `SIGTTIN`으로 멈춘다 — 프롬프트만 찍히고 입력이 안 먹는
+  증상이 된다. 부모의 프로세스 그룹과 controlling tty를 그대로 물려줘야 한다.
+- 자식의 종료 상태(정상 종료 코드 / 시그널)를 그대로 전달한다.
+
+## 2026-08-31 - 특수키 처리 경로 통합
+
+### 한글 입력 중 `` ` ``, `₩`가 나오지 않던 문제
+- 원인: ⌘ 조합 키 이벤트는 AppKit의 키 이퀴벌런트 단계에서 소비되어
+  `IMKInputController.handle`까지 내려오지 않는다. NavilIME 활성(한글) 상태에서는
+  `SpecialKeyTap`이 IMK 경로에 처리를 양보했으므로 아무도 처리하지 않았다.
+  (`Shift+ESC→~`는 키 이퀴벌런트가 아니라 IMK에 도달해 정상 동작했다.)
+- 조치: `SpecialKeyTap`을 특수키 조합의 유일한 처리 경로로 통합. 탭이 세션 레벨에서
+  모디파이어를 지우고 유니코드를 갈아끼우므로, 치환된 이벤트는 평범한 키가 되어
+  입력기 상태와 무관하게 동작한다.
+- `NavilIMEInputController.special_keys` 사본 테이블과 처리 루프 제거.
+  `SpecialKeyTap.currentInputSourceIsNavil()`(TIS 조회)과 `import Carbon`도 함께 제거.
+- 치환된 이벤트는 keycode가 아니라 `event.characters`가 진실이다. 탭은 모디파이어만
+  지우므로 keycode는 원래 키로 남는데, `Cmd+\`(0x2A)는 `key_code` 테이블 범위 안이라
+  IMK가 이를 `\`로 재해석해 `₩`를 덮어쓴다. IMK 경로가 `SpecialKeyTap.outputs`에
+  속한 문자를 만나면 keycode 해석을 건너뛰도록 처리.
+  (`~`, `` ` ``는 keycode 0x35로 테이블 범위 밖이라 원래 영향 없음)
+
+### 모디파이어 정확 일치
+- 기존 `flags.contains(combo.flag)`는 추가 모디파이어를 허용해, `Cmd+Shift+ESC`가
+  테이블 첫 항목(`Shift+ESC`)에 걸려 `~`를 냈다.
+- `matchedFlags`(shift/control/option/command)로 걸러낸 뒤 등가 비교로 변경.
+  Caps Lock과 fn은 마스크에서 제외 — 켜져 있다고 조합이 깨지면 안 되므로.
+
+### 문서/UI
+- 권한이 없으면 특수키가 **어느 입력기에서도** 동작하지 않음을 README, 트레이 메뉴
+  주석, 권한 안내 alert에 반영.
+
 ## 2026-05-27 - 전역 특수키 입력 및 개인 빌드 서명
 
 ### 특수키 조합을 다른 입력기 상태에서도 동작 (전역)

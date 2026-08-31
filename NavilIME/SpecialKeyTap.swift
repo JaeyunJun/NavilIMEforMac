@@ -2,24 +2,29 @@
 //  SpecialKeyTap.swift
 //  NavilIME
 //
-//  전역 키 가로채기(CGEventTap)로 특수키 조합을 다른 입력기 상태에서도 치환한다.
+//  전역 키 가로채기(CGEventTap)로 특수키 조합을 모든 입력기 상태에서 치환한다.
 //
-//  NavilIME가 활성 입력기일 때는 IMK 경로(NavilIMEInputController.special_keys)가
-//  이미 처리하므로, 이 탭은 "현재 입력기가 NavilIME가 아닐 때"만 동작시켜 이중 처리를
-//  막는다. 동작하려면 App Sandbox가 꺼져 있어야 하고 손쉬운 사용(Accessibility)
-//  권한이 허용돼야 한다.
+//  이 탭이 특수키 조합의 유일한 처리 경로다. IMK 경로(IMKInputController.handle)는
+//  ⌘ 조합을 아예 받지 못한다 — ⌘ 이벤트는 AppKit의 키 이퀴벌런트 단계에서 소비되어
+//  입력기까지 내려오지 않기 때문이다. 반면 이 탭은 세션 레벨(headInsertEventTap)이라
+//  AppKit보다 먼저 이벤트를 보고, 모디파이어를 지운 뒤 유니코드를 갈아끼울 수 있다.
+//  그래서 NavilIME가 활성이든(한글) 아니든(영문) 이 탭이 처리한다.
+//  치환된 이벤트는 모디파이어 없는 평범한 키가 되지만 keycode는 원래 키 그대로다.
+//  그래서 IMK 경로는 keycode 대신 event.characters를 봐야 한다 — 아래 outputs 참조.
+//
+//  동작하려면 App Sandbox가 꺼져 있어야 하고 손쉬운 사용(Accessibility) 권한이
+//  허용돼야 한다. 권한이 없으면 특수키 조합은 어느 입력기에서도 동작하지 않는다.
 //
 //  [중요] 탭은 전용 스레드의 런루프에서 돈다. IMK 입력 경로(NavilIMEInputController.handle)는
 //  메인 스레드에서 도는데, 시스템 전역 keyDown 탭을 메인 런루프에 걸면 모든 키 입력이
 //  메인 스레드를 동기 통과하게 되어, 메인 스레드가 바쁜 순간 입력/전환 지연이 생긴다.
-//  그래서 탭은 메인이 아닌 별도 스레드로 분리한다. (TIS 조회 비용도 탭 스레드에서만 소비된다.)
+//  그래서 탭은 메인이 아닌 별도 스레드로 분리한다.
 //
 
 import Cocoa
 import ApplicationServices
-import Carbon
 
-// IMK 경로(NavilIMEInputController.special_keys)와 동일한 조합을 유지한다.
+// 특수키 조합 테이블의 단일 정의. (IMK 경로에는 사본을 두지 않는다.)
 struct SpecialKeyCombo {
     let keyCode: CGKeyCode
     let flag: CGEventFlags
@@ -29,12 +34,20 @@ struct SpecialKeyCombo {
 class SpecialKeyTap {
     static let shared = SpecialKeyTap()
 
-    // NavilIMEInputController.special_keys와 짝을 이룬다. 한쪽을 바꾸면 다른 쪽도 맞춘다.
-    let combos: [SpecialKeyCombo] = [
+    // 조합 매칭에 쓰는 모디파이어. 이 마스크로 걸러낸 뒤 '정확히 일치'를 요구하므로
+    // Cmd+Shift+ESC 같은 확장 조합은 매칭되지 않는다. Caps Lock(maskAlphaShift)과
+    // fn(maskSecondaryFn)은 일부러 뺐다 — 켜져 있다고 조합이 깨지면 안 되기 때문.
+    static let matchedFlags: CGEventFlags = [.maskShift, .maskControl, .maskAlternate, .maskCommand]
+
+    static let combos: [SpecialKeyCombo] = [
         SpecialKeyCombo(keyCode: 0x35, flag: .maskShift,   output: "~"),  // Shift+ESC → ~
         SpecialKeyCombo(keyCode: 0x35, flag: .maskCommand, output: "`"),  // Cmd+ESC → `
         SpecialKeyCombo(keyCode: 0x2A, flag: .maskCommand, output: "₩"), // Cmd+\ → ₩
     ]
+
+    // 탭이 이벤트에 심어 넣는 출력 문자들. IMK 경로가 "이 문자는 keycode가 아니라
+    // event.characters가 진실"임을 판별하는 데 쓴다. (NavilIMEInputController 참조)
+    static let outputs: Set<String> = Set(combos.map { $0.output })
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -153,31 +166,17 @@ class SpecialKeyTap {
         let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
         let flags = event.flags
 
-        // 특수키 조합 후보가 아니면(거의 모든 키) TIS 조회 없이 즉시 통과한다.
-        guard let combo = combos.first(where: { keyCode == $0.keyCode && flags.contains($0.flag) }) else {
+        // 조합에 정확히 일치하지 않으면(거의 모든 키) 손대지 않고 즉시 통과한다.
+        let matched = flags.intersection(Self.matchedFlags)
+        guard let combo = Self.combos.first(where: { keyCode == $0.keyCode && matched == $0.flag }) else {
             return Unmanaged.passUnretained(event)
         }
 
-        // 후보일 때만 NavilIME 활성 여부를 확인한다. NavilIME가 활성이면 IMK 경로가
-        // 처리하므로 탭은 건드리지 않는다. (TIS 조회가 사실상 특수키를 누를 때만 일어남)
-        if currentInputSourceIsNavil() {
-            return Unmanaged.passUnretained(event)
-        }
-
+        // 모디파이어를 지우고 문자를 갈아끼운다. 이게 IMK 경로가 못 하는 일이고,
+        // 그래서 한글/영문 어느 쪽이든 여기서 끝낸다.
         event.flags = CGEventFlags(rawValue: 0)
         let utf16 = Array(combo.output.utf16)
         event.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
         return Unmanaged.passUnretained(event)
-    }
-
-    private func currentInputSourceIsNavil() -> Bool {
-        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue() else {
-            return false
-        }
-        guard let ptr = TISGetInputSourceProperty(source, kTISPropertyBundleID) else {
-            return false
-        }
-        let bundleID = Unmanaged<CFString>.fromOpaque(ptr).takeUnretainedValue() as String
-        return bundleID == (Bundle.main.bundleIdentifier ?? "")
     }
 }

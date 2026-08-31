@@ -18,7 +18,8 @@ class HangulMenu {
     // tag는 OptHandler.Is_han_eng_changed가 해석하는 hotkey_radio_tag와 동일.
     let hotkey_items:[NSMenuItem]
 
-    // 특수키(₩, ~, `) 전역 입력 권한 상태/허용 항목. menu()가 그릴 때마다 갱신한다.
+    // 특수키(₩, ~, `) 입력 권한 상태/허용 항목. menu()가 그릴 때마다 갱신한다.
+    // 이 권한이 없으면 특수키 조합은 한글/영문 어느 쪽에서도 동작하지 않는다.
     let permission_item:NSMenuItem
 
     private init() {
