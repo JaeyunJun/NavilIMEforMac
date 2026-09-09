@@ -15,12 +15,30 @@ open class NavilIMEInputController: IMKInputController {
     
     var hangul:Hangul?
 
+    // 마지막으로 입력을 받은 클라이언트의 번들 ID. menu()에는 클라이언트가 넘어오지
+    // 않으므로, 트레이 메뉴가 "이 앱"을 알려면 여기에 남겨둬야 한다.
+    // 컨트롤러는 클라이언트마다 새로 만들어지므로 static이어야 한다.
+    static var last_client_bundle_id:String?
+
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
 
         PrintLog.shared.Log(log: "Server Activated")
         self.hangul = Hangul()
         self.hangul?.Start()
+        self.apply_app_lang(client: sender)
+    }
+
+    // 이 앱에 한/영이 지정돼 있으면 그대로 맞춘다. 지정 안 한 앱은 건드리지 않는다.
+    // (앱 안에서 수동 전환하면 그게 이기고, 다시 들어올 때 지정값으로 돌아온다.)
+    func apply_app_lang(client:Any!) {
+        guard let bundle_id = (client as? IMKTextInput)?.bundleIdentifier() else { return }
+        Self.last_client_bundle_id = bundle_id
+        switch AppLangHandler.shared.lang(for: bundle_id) {
+        case .unset:   break
+        case .hangul:  HangulMenu.shared.self_eng_mode = false
+        case .english: HangulMenu.shared.self_eng_mode = true
+        }
     }
 
     override open func deactivateServer(_ sender: Any!) {
@@ -259,6 +277,7 @@ open class NavilIMEInputController: IMKInputController {
         // 권한이 방금 허용됐다면 탭을 켜고, 메뉴 표시 상태도 갱신한다.
         SpecialKeyTap.shared.startIfTrusted()
         HangulMenu.shared.refresh_permission_state()
+        HangulMenu.shared.refresh_app_lang_state()
         return HangulMenu.shared.menu
    }
     
@@ -276,6 +295,24 @@ open class NavilIMEInputController: IMKInputController {
             return
         }
         HangulMenu.shared.set_hotkey(tag: item.tag)
+    }
+
+    // 지금 입력 중인 앱의 한/영을 고정하거나 해제한다. 고른 즉시 반영된다.
+    @objc func select_app_lang(_ sender:Any?) {
+        self.hangul?.Flush()
+        guard let dict = sender as? [String: Any],
+              let item = dict["IMKCommandMenuItem"] as? NSMenuItem,
+              let bundle_id = Self.last_client_bundle_id,
+              let lang = AppLang(rawValue: item.tag) else {
+            return
+        }
+        AppLangHandler.shared.set(lang, for: bundle_id)
+        switch lang {
+        case .unset:   break
+        case .hangul:  HangulMenu.shared.self_eng_mode = false
+        case .english: HangulMenu.shared.self_eng_mode = true
+        }
+        HangulMenu.shared.refresh_app_lang_state()
     }
 
     // 특수키(₩, ~, `)는 전역 이벤트 탭이 유일한 처리 경로라 손쉬운 사용 권한이 필요하다.

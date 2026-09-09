@@ -6,6 +6,26 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-09-09 - 앱별 한/영 고정
+
+- 이 입력기의 한/영은 입력 소스 전환이 아니라 `self_eng_mode` 플래그를 뒤집는 방식이라,
+  macOS 입장에선 어느 앱에서든 "NavilIME 선택됨"으로 동일하게 보인다. 그래서 OS의
+  "문서의 입력 소스로 자동 전환"이 이 상태를 기억해줄 수 없다. 입력기가 직접 기억한다.
+- `AppLangHandler`: 번들 ID → `지정 안 함`/`한글`/`영문`. 지정한 앱만 저장하고,
+  해제하면 키 자체를 지운다. `UserDefaults`(`app_lang_map`)에 영속화.
+- `activateServer`에서 클라이언트 번들 ID를 읽어 지정값이 있으면 모드를 맞춘다.
+  지정 안 한 앱은 건드리지 않으므로 기존 동작 그대로다.
+- 트레이 메뉴에 "‘앱이름’에서 항상" 섹션 추가. `menu()`에는 클라이언트가 넘어오지 않아
+  마지막 클라이언트 번들 ID를 static으로 남겨 쓴다.
+- 앱 안에서 수동 전환하면 그게 이기고, 다시 들어올 때 지정값으로 복귀한다.
+
+### 측정 정정
+- 이전 회차에서 "비활성 로그가 이벤트당 21.5ns"라고 적었으나 오측이었다. 벤치마크
+  하네스를 `-wmo` 없이 컴파일한 탓이고, 실제 Release는 `SWIFT_COMPILATION_MODE =
+  wholemodule`이라 최적화기가 오토클로저를 완전히 제거한다. 실제 비용은 0ns다.
+- 같은 조건에서 한영전환 전체 경로는 약 2.5ns(`Is_han_eng_changed` 1.44ns +
+  `ToggleSuspend` 1.11ns). 비교로 macOS 입력 소스 전환은 중앙값 1.29ms.
+
 ## 2026-08-31 - Release 빌드에서 get-task-allow 제거
 
 - Xcode는 Apple Development 인증서로 서명할 때 `com.apple.security.get-task-allow`를
