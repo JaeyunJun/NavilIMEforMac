@@ -180,15 +180,6 @@ class Hangul {
         self.automata = nil
     }
     
-    func ToggleSuspend() {
-        HangulMenu.shared.self_eng_mode = !HangulMenu.shared.self_eng_mode
-        if HangulMenu.shared.self_eng_mode {
-            PrintLog.shared.Log(log: "영어")
-        } else {
-            PrintLog.shared.Log(log: "한글")
-        }
-    }
-    
     static let keyboard002 = Keyboard002()
 
     func Start() {
@@ -198,11 +189,6 @@ class Hangul {
 
     func Process(ascii:String) -> Bool {
         guard var automata = self.automata else { return false }
-
-        // 자체 영어 입력 모드 - 한글 오토마타를 잠시 중지하면 그게 영어 입력이다.
-        if HangulMenu.shared.self_eng_mode {
-            return false
-        }
 
         // 한글인지 확인
         if self.keyboard?.is_hangul(ch: ascii) == false {

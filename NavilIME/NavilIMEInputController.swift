@@ -29,16 +29,12 @@ open class NavilIMEInputController: IMKInputController {
         self.apply_app_lang(client: sender)
     }
 
-    // 이 앱에 한/영이 지정돼 있으면 그대로 맞춘다. 지정 안 한 앱은 건드리지 않는다.
-    // (앱 안에서 수동 전환하면 그게 이기고, 다시 들어올 때 지정값으로 돌아온다.)
+    // 트레이 메뉴가 "이 앱"을 표시할 수 있도록 클라이언트만 기록한다.
+    // 지정값 적용은 앱 전환 감시(AppDelegate)가 전담한다 — 여기서 입력 소스를 바꾸면
+    // 사용자가 방금 고른 입력 소스를 되돌려버린다.
     func apply_app_lang(client:Any!) {
         guard let bundle_id = (client as? IMKTextInput)?.bundleIdentifier() else { return }
         Self.last_client_bundle_id = bundle_id
-        switch AppLangHandler.shared.lang(for: bundle_id) {
-        case .unset:   break
-        case .hangul:  HangulMenu.shared.self_eng_mode = false
-        case .english: HangulMenu.shared.self_eng_mode = true
-        }
     }
 
     override open func deactivateServer(_ sender: Any!) {
@@ -68,12 +64,6 @@ open class NavilIMEInputController: IMKInputController {
     override open func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
         self.ensureHangulReady()
 
-        if OptHandler.shared.Is_han_eng_changed(keycode: event.keyCode, modi: event.modifierFlags) {
-            self.hangul?.ToggleSuspend()
-            self.commitComposition(sender)
-            return true
-        }
-
         switch event.type {
         case .keyDown:
             let eaten = self.keydown_event_handler(event: event, client: sender)
@@ -99,8 +89,8 @@ open class NavilIMEInputController: IMKInputController {
         // 조합하지 않고 키를 그대로 흘려보낸다. macOS는 이 상황에서 입력 소스를 영문으로
         // 갈아주지 않으므로(확인함), 입력기가 스스로 비켜야 암호가 제대로 들어간다.
         //
-        // 한/영 상태(ToggleSuspend)는 건드리지 않는다 — 프롬프트를 빠져나오면 원래
-        // 한글 상태로 알아서 돌아온다. 호출 비용은 ~4ns라 매 키 입력마다 확인해도 무방하다.
+        // 입력 소스는 건드리지 않는다 — 프롬프트를 빠져나오면 원래 상태 그대로다.
+        // 호출 비용은 ~4ns라 매 키 입력마다 확인해도 무방하다.
         //
         // [주의] secure input은 프로세스 전역 참조 카운트라, 어떤 앱이 켜놓고 끄지 않으면
         // 한글이 어디서도 조합되지 않는다. 그 증상이면 화면을 잠갔다 풀면 풀린다.
@@ -288,15 +278,6 @@ open class NavilIMEInputController: IMKInputController {
      거기서 NSMenuItem을 찾으려면 ["IMKCommandMenuItem"]으로 Dictionary에서 값을 가져와야 한다.
      인터넷 그 어디에도 공식적인 문서 자료가 없다. 내가 삽질해서 찾은 것임.
      */
-    @objc func select_haneng_hotkey(_ sender:Any?) {
-        self.hangul?.Flush()
-        guard let dict = sender as? [String: Any],
-              let item = dict["IMKCommandMenuItem"] as? NSMenuItem else {
-            return
-        }
-        HangulMenu.shared.set_hotkey(tag: item.tag)
-    }
-
     // 지금 입력 중인 앱의 한/영을 고정하거나 해제한다. 고른 즉시 반영된다.
     @objc func select_app_lang(_ sender:Any?) {
         self.hangul?.Flush()
@@ -307,12 +288,8 @@ open class NavilIMEInputController: IMKInputController {
             return
         }
         AppLangHandler.shared.set(lang, for: bundle_id)
-        switch lang {
-        case .unset:   break
-        case .hangul:  HangulMenu.shared.self_eng_mode = false
-        case .english: HangulMenu.shared.self_eng_mode = true
-        }
         HangulMenu.shared.refresh_app_lang_state()
+        AppLangHandler.shared.apply_on_activate(bundle_id: bundle_id)
     }
 
     // 특수키(₩, ~, `)는 전역 이벤트 탭이 유일한 처리 경로라 손쉬운 사용 권한이 필요하다.

@@ -6,6 +6,26 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-09-09 - 내부 한/영 모드 제거, 입력 소스로 일원화
+
+- `self_eng_mode`(입력기 내부 한/영 플래그)와 전용 단축키를 전부 제거했다.
+  `ToggleSuspend`, `OptHandler`(`SingletonOpt.swift` 삭제), 트레이의 "한/영 전환" 섹션,
+  `select_haneng_hotkey` 제거. 순 -62줄.
+- 한/영은 macOS 입력 소스 선택으로만 결정된다. 한글 = NavilIME, 영문 = ASCII 레이아웃(ABC).
+- 내부 모드는 macOS가 알 수 없는 상태였다. 어느 앱에서든 "NavilIME 선택됨"으로만 보여
+  OS가 앱별 기억도 암호 필드 대응도 해줄 수 없었고, 이 세션에서 겪은 문제들의 공통 뿌리였다.
+- 전환 비용은 2.5ns → 약 1.29ms(측정 중앙값)로 늘지만 인지 한계(~10ms) 아래다.
+- 앱별 지정은 `NSWorkspace.didActivateApplicationNotification`으로 적용한다.
+  `activateServer`는 선택된 입력기에만 오므로, 입력 소스가 ABC일 때는 알림이 유일한 경로다.
+- '영문' 지정인데 이미 ABC면 아무것도 하지 않는다 — 결과가 같고 사용자의 소스 선택을
+  뒤엎을 이유가 없다.
+
+### 검증 중 발견: 옛 샌드박스 컨테이너
+- `~/Library/Containers/com.navilera.inputmethod.NavilIME/`가 남아 있다. 샌드박스를
+  끄기 전 시절의 잔재로, `defaults` 명령은 이 컨테이너를 읽고 쓰는 반면 앱은
+  `~/Library/Preferences/`를 쓴다. 옛 설정(`keyboard`, `002_sel_no_shift`)이 컨테이너에
+  갇혀 있고 앱은 못 읽는다. 지금 코드에는 없는 설정이라 실사용 영향은 없다.
+
 ## 2026-09-09 - 앱별 한/영 고정
 
 - 이 입력기의 한/영은 입력 소스 전환이 아니라 `self_eng_mode` 플래그를 뒤집는 방식이라,
