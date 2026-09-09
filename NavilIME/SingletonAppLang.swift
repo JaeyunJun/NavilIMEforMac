@@ -15,6 +15,7 @@ import Foundation
 import Carbon
 import Cocoa
 
+
 enum AppLang: Int {
     case unset = 0      // 지정 안 함 — 현재 상태를 그대로 둔다
     case hangul = 1
@@ -53,6 +54,10 @@ class AppLangHandler {
         UserDefaults.standard.set(map, forKey: db_key)
     }
 
+    // 마지막으로 지정값을 적용한 앱. 같은 앱 안에서 사용자가 ⌘Space로 직접 바꾼 것을
+    // 되돌리지 않기 위해, '앱이 바뀔 때'만 적용한다. (전환 루프도 이걸로 막힌다.)
+    private var last_applied:String?
+
     /// 앱이 앞으로 나올 때 지정값을 적용한다.
     ///
     /// activateServer는 NavilIME가 '선택된 입력기'일 때만 불린다. 입력 소스가 ABC면
@@ -65,6 +70,9 @@ class AppLangHandler {
     ///                              입력 소스를 뒤엎을 이유가 없다
     ///   영문 지정 + 현재 NavilIME → 영문
     func apply_on_activate(bundle_id:String) {
+        guard last_applied != bundle_id else { return }
+        last_applied = bundle_id
+
         switch lang(for: bundle_id) {
         case .unset:
             return

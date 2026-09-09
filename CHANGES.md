@@ -15,8 +15,14 @@
 - 내부 모드는 macOS가 알 수 없는 상태였다. 어느 앱에서든 "NavilIME 선택됨"으로만 보여
   OS가 앱별 기억도 암호 필드 대응도 해줄 수 없었고, 이 세션에서 겪은 문제들의 공통 뿌리였다.
 - 전환 비용은 2.5ns → 약 1.29ms(측정 중앙값)로 늘지만 인지 한계(~10ms) 아래다.
-- 앱별 지정은 `NSWorkspace.didActivateApplicationNotification`으로 적용한다.
-  `activateServer`는 선택된 입력기에만 오므로, 입력 소스가 ABC일 때는 알림이 유일한 경로다.
+- 앱별 지정은 두 신호로 적용한다. `activateServer`(IMK가 새 클라이언트로 입력기를 켤 때)와
+  `NSWorkspace.didActivateApplicationNotification`(입력기가 비활성이라 activateServer가
+  오지 않을 때).
+- Raycast 같은 런처는 '비활성화 패널'로 떠서 최전면 앱이 바뀌지 않는다. 실측 결과 워크스페이스
+  알림이 아예 오지 않고 `activateServer`만 온다. 그래서 두 경로가 모두 필요하다.
+- 적용은 앱이 바뀔 때만 한다(`last_applied` 가드). `activateServer`는 같은 앱 안에서도 자주
+  불리므로, 매번 적용하면 ⌘Space로 직접 바꾼 것을 즉시 되돌려 그 앱에서 반대 언어를 못 쓰게
+  된다. 전환 루프도 이 가드로 막힌다.
 - '영문' 지정인데 이미 ABC면 아무것도 하지 않는다 — 결과가 같고 사용자의 소스 선택을
   뒤엎을 이유가 없다.
 

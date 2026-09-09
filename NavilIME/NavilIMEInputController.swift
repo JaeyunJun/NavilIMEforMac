@@ -29,12 +29,13 @@ open class NavilIMEInputController: IMKInputController {
         self.apply_app_lang(client: sender)
     }
 
-    // 트레이 메뉴가 "이 앱"을 표시할 수 있도록 클라이언트만 기록한다.
-    // 지정값 적용은 앱 전환 감시(AppDelegate)가 전담한다 — 여기서 입력 소스를 바꾸면
-    // 사용자가 방금 고른 입력 소스를 되돌려버린다.
+    // Raycast 같은 런처는 '비활성화 패널'로 떠서 앱 활성화 알림이 오지 않는 경우가 있다.
+    // 그때는 IMK가 새 클라이언트로 입력기를 활성화하는 이 경로가 유일한 신호다.
+    // 같은 앱 안에서의 재활성화(⌘Space로 직접 전환)는 AppLangHandler가 걸러낸다.
     func apply_app_lang(client:Any!) {
         guard let bundle_id = (client as? IMKTextInput)?.bundleIdentifier() else { return }
         Self.last_client_bundle_id = bundle_id
+        AppLangHandler.shared.apply_on_activate(bundle_id: bundle_id)
     }
 
     override open func deactivateServer(_ sender: Any!) {
