@@ -23,6 +23,8 @@
 
 import Cocoa
 import ApplicationServices
+import InputMethodKit
+
 
 // 특수키 조합 테이블의 단일 정의. (IMK 경로에는 사본을 두지 않는다.)
 struct SpecialKeyCombo {
@@ -170,6 +172,18 @@ class SpecialKeyTap {
         let matched = flags.intersection(Self.matchedFlags)
         guard let combo = Self.combos.first(where: { keyCode == $0.keyCode && matched == $0.flag }) else {
             return Unmanaged.passUnretained(event)
+        }
+
+        // 치환된 이벤트는 입력기를 거치지 않고 앱으로 직행한다(실측 확인). 조합 중이라면
+        // 입력기가 조합을 확정할 기회가 없어 그 글자가 묻히므로, 여기서 먼저 확정시킨다.
+        // 특수키 3개를 누를 때만 도는 경로이고, 메인이 탭 스레드를 기다리는 구조가 아니라
+        // 교착 위험은 없다. (혹시 메인에서 불릴 경우를 대비해 분기해 둔다.)
+        if Thread.isMainThread {
+            NavilIMEInputController.commit_active_composition()
+        } else {
+            DispatchQueue.main.sync {
+                NavilIMEInputController.commit_active_composition()
+            }
         }
 
         // 모디파이어를 지우고 문자를 갈아끼운다. 이게 IMK 경로가 못 하는 일이고,

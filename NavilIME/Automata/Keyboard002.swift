@@ -108,9 +108,10 @@ class Keyboard002 : Keyboard {
     }
     
     override func chosung_proc(comp: inout Composition, ch: String) -> Bool {
-        // 기존 입력에 초성이 있고 중성도 있음
-        if comp.chosung != "" && comp.jungsung != "" {
-            // 초성 테이블에서 더이상 검색하지 않음
+        // 초성은 중성보다 먼저 와야 한다. 중성이 이미 채워졌으면 이 자음은 이 글자의
+        // 초성이 될 수 없다 — 종성이거나 다음 글자의 초성이다.
+        // (이 제약이 없으면 "ㅣ" 뒤의 "ㄹ"이 소급해서 초성으로 끼어들어 "리"가 된다.)
+        if comp.jungsung != "" {
             return false
         }
         let chokey:String = comp.chosung + ch
@@ -142,8 +143,9 @@ class Keyboard002 : Keyboard {
     }
     
     override func jongsung_proc(comp: inout Composition, ch: String) -> Bool {
-        // 중성이 없으면 검색하지 않음
-        if comp.jungsung == "" {
+        // 종성은 초성+중성이 갖춰진 글자에만 붙는다. 초성 없이 중성만 있는 낱자
+        // (예: "ㅣ")에는 받침이 붙을 수 없으므로 조합을 끝내고 새 글자로 넘어간다.
+        if comp.jungsung == "" || comp.chosung == "" {
             return false
         }
         let jongkey:String = comp.jongsung + ch

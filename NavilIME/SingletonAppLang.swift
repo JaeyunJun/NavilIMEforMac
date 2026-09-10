@@ -100,7 +100,12 @@ class AppLangHandler {
 
     private static func select(_ source:TISInputSource?) {
         guard let source = source else { return }
-        TISSelectInputSource(source)
+        // activateServer 안에서 곧바로 입력 소스를 바꾸면, IMK 가 새 클라이언트로 입력기를
+        // 활성화하는 도중에 세션이 갈려 포커스가 튄다(런처 오버레이에서 첫 글자가 들어간 뒤
+        // 입력이 끊기는 증상). 다음 런루프로 미뤄 활성화가 끝난 뒤에 바꾼다.
+        DispatchQueue.main.async {
+            TISSelectInputSource(source)
+        }
     }
 
     private static func enabled_sources(ascii_only:Bool) -> [TISInputSource] {

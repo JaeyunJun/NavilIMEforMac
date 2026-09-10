@@ -8,12 +8,27 @@
 import InputMethodKit
 import Carbon
 
+
 @objc(NavilIMEInputController)
 open class NavilIMEInputController: IMKInputController {
     let key_code:String =       "asdfhgzxcv\tbqweryt123465=97-80]ou[ip\tlj'k;\\,/nm.\t `"
     let shift_key_code:String = "ASDFHGZXCV\tBQWERYT!@#$^%+(&_*)}OU{IP\tLJ\"K:|<?NM>\t ~"
     
     var hangul:Hangul?
+
+    // SpecialKeyTap이 치환한 이벤트는 입력기를 거치지 않고 앱으로 직행한다(실측 확인).
+    // 그래서 조합 중이면 입력기가 조합을 확정할 기회가 없어 글자가 묻힌다.
+    // 탭이 확정을 대신 요청할 수 있도록 현재 활성 컨트롤러와 클라이언트를 들고 있는다.
+    static weak var active_controller:NavilIMEInputController?
+    static var active_client:Any?
+
+    /// 탭이 특수키를 치환하기 직전에 부른다. 조합 중이던 글자를 확정한다.
+    /// 반드시 메인 스레드에서 호출한다(IMK 입력 경로와 같은 스레드).
+    static func commit_active_composition() {
+        guard let controller = active_controller, let client = active_client else { return }
+        controller.hangul?.Flush()
+        controller.update_display(client: client)
+    }
 
     // 마지막으로 입력을 받은 클라이언트의 번들 ID. menu()에는 클라이언트가 넘어오지
     // 않으므로, 트레이 메뉴가 "이 앱"을 알려면 여기에 남겨둬야 한다.
@@ -26,6 +41,8 @@ open class NavilIMEInputController: IMKInputController {
         PrintLog.shared.Log(log: "Server Activated")
         self.hangul = Hangul()
         self.hangul?.Start()
+        Self.active_controller = self
+        Self.active_client = sender
         self.apply_app_lang(client: sender)
     }
 
@@ -47,6 +64,11 @@ open class NavilIMEInputController: IMKInputController {
         self.hangul?.Flush()
         self.update_display(client: sender)
         self.hangul?.Stop()
+
+        if Self.active_controller === self {
+            Self.active_controller = nil
+            Self.active_client = nil
+        }
 
         super.deactivateServer(sender)
     }
@@ -85,6 +107,7 @@ open class NavilIMEInputController: IMKInputController {
 
         let keycode = event.keyCode
         let flag = event.modifierFlags
+
 
         // secure input이 켜진 동안(sudo 암호 프롬프트, 잠금 해제, 암호 필드 등)에는
         // 조합하지 않고 키를 그대로 흘려보낸다. macOS는 이 상황에서 입력 소스를 영문으로
