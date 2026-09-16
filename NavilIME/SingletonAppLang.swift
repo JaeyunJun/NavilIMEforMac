@@ -81,9 +81,15 @@ class AppLangHandler {
                 Self.select(Self.navil_source())
             }
         case .english:
-            if Self.current_is_navil() {
-                Self.select(Self.ascii_layout_source())
-            }
+            // 입력 소스를 바꾸지 않는다. 런처 오버레이(Raycast 등)는 최전면 앱을 바꾸지 않고
+            // 키 포커스만 빌려 쓰는 '비활성화 패널'인데, 그 상태에서 TISSelectInputSource 를
+            // 부르면 IMK 세션이 갈리면서 빌린 포커스가 소유 앱으로 돌아가버린다.
+            // (호출을 다음 런루프로 미뤄도 동일하다. 타이밍이 아니라 호출 자체가 원인이다.)
+            //
+            // 대신 이 앱에서는 조합만 멈춘다 — NavilIMEInputController 의 키 입력 경로가
+            // lang(for:) 을 보고 판단한다. 키가 들어온 시점에 동기로 판정하므로 전환을
+            // 기다리다 첫 글자가 한글로 들어가는 경쟁도 없다.
+            break
         }
     }
 
@@ -100,35 +106,27 @@ class AppLangHandler {
 
     private static func select(_ source:TISInputSource?) {
         guard let source = source else { return }
-        TISSelectInputSource(source)
+        // activateServer 안에서 곧바로 입력 소스를 바꾸면, IMK 가 새 클라이언트로 입력기를
+        // 활성화하는 도중에 세션이 갈려 포커스가 튄다(런처 오버레이에서 첫 글자가 들어간 뒤
+        // 입력이 끊기는 증상). 다음 런루프로 미뤄 활성화가 끝난 뒤에 바꾼다.
+        DispatchQueue.main.async {
+            TISSelectInputSource(source)
+        }
     }
 
-    private static func enabled_sources(ascii_only:Bool) -> [TISInputSource] {
-        var filter:[String: Any] = [
+    private static func enabled_sources() -> [TISInputSource] {
+        let filter:[String: Any] = [
             kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as Any,
             kTISPropertyInputSourceIsSelectCapable as String: true,
             kTISPropertyInputSourceIsEnabled as String: true,
         ]
-        if ascii_only {
-            filter[kTISPropertyInputSourceIsASCIICapable as String] = true
-        }
         return TISCreateInputSourceList(filter as CFDictionary, false)?.takeRetainedValue()
             as? [TISInputSource] ?? []
     }
 
     private static func navil_source() -> TISInputSource? {
         let me = Bundle.main.bundleIdentifier ?? ""
-        return enabled_sources(ascii_only: false).first { source_id($0) == me }
-    }
-
-    /// 영문용. ASCII 가능한 '키보드 레이아웃'만 고른다 — 입력 모드까지 포함하면
-    /// 다른 언어 입력기가 걸릴 수 있다. 보통 ABC가 잡힌다.
-    private static func ascii_layout_source() -> TISInputSource? {
-        return enabled_sources(ascii_only: true).first { source in
-            guard let p = TISGetInputSourceProperty(source, kTISPropertyInputSourceType) else { return false }
-            let type = Unmanaged<CFString>.fromOpaque(p).takeUnretainedValue() as String
-            return type == (kTISTypeKeyboardLayout as String)
-        }
+        return enabled_sources().first { source_id($0) == me }
     }
 
     /// 트레이 메뉴에 보여줄 짧은 이름. "com.apple.Terminal" → "Terminal"
