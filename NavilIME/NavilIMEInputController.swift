@@ -124,6 +124,16 @@ open class NavilIMEInputController: IMKInputController {
             return false
         }
 
+        // 영문으로 지정한 앱에서는 조합하지 않고 키를 그대로 흘려보낸다.
+        // 입력 소스를 바꾸는 대신 이렇게 하는 이유는 SingletonAppLang.apply_on_activate 참고.
+        // (secure input 일 때와 같은 방식이다.)
+        if let bundle_id = Self.last_client_bundle_id,
+           AppLangHandler.shared.lang(for: bundle_id) == .english {
+            hangul.Flush()
+            self.update_display(client: client)
+            return false
+        }
+
         // SpecialKeyTap이 치환한 이벤트는 keycode가 아니라 문자가 진실이다.
         // 탭은 모디파이어만 지우고 유니코드를 갈아끼우므로 keycode는 원래 키(예: Cmd+\의 0x2A)
         // 그대로 남는다. 이걸 아래 key_code 테이블로 재해석하면 ₩ 대신 \ 가 나온다.
