@@ -6,6 +6,20 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-10-08 - 한글 상태 특수키 수정, 권한 상태 창
+
+- 한글(NavilIME) 상태에서 `Shift+ESC`/`Cmd+ESC`/`Cmd+\`가 아무것도 입력하지 않던 문제를 고쳤다.
+  탭이 문자를 바꿔 넣은 이벤트는 입력기의 `handle`까지 오지 않는다(Debug 로그로 확인: 탭은
+  매칭했지만 IMK keyDown이 없음). 그래서 기존의 `event.characters` 판별 분기는 한 번도 타지 않았다.
+- 이제 NavilIME가 활성이면 탭이 이벤트를 삼키고, 메인 스레드에서 활성 컨트롤러의
+  `insert_special`을 부른다. 조합 중인 글자를 확정하고 그 뒤에 기호를 붙인다.
+  활성 컨트롤러는 `activateServer`/`deactivateServer`로 추적한다(탭 스레드가 읽으므로 잠금).
+- 권한 상태 창(`PermissionWindow.swift`) 추가. 실제 권한(`AXIsProcessTrusted`)과 탭 동작
+  여부를 보여주고, 손쉬운 사용 설정으로 보내며, 떠 있는 동안 1초마다 다시 조회한다.
+  메뉴 항목도 항상 실제 상태를 보여주고 누르면 이 창을 연다.
+- `SpecialKeyTap.isActive` 추가, 탭 생성 실패 시 재시도 가능하게 함.
+- README: 로컬 자체 서명 인증서로 권한 유지하는 방법, Debug 빌드 시 `ENABLE_DEBUG_DYLIB=NO` 주의.
+
 ## 2026-09-09 - 내부 한/영 모드 제거, 입력 소스로 일원화
 
 - `self_eng_mode`(입력기 내부 한/영 플래그)와 전용 단축키를 전부 제거했다.

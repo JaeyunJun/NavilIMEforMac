@@ -20,10 +20,28 @@ open class NavilIMEInputController: IMKInputController {
     // 컨트롤러는 클라이언트마다 새로 만들어지므로 static이어야 한다.
     static var last_client_bundle_id:String?
 
+    // 지금 입력을 받고 있는 컨트롤러. SpecialKeyTap(탭 스레드)이 "한글 입력기가 켜져 있나"를
+    // 판단하고 특수키를 넘겨주는 데 쓴다. 탭 스레드와 메인 스레드가 함께 만지므로 잠금으로 보호한다.
+    private static let active_lock = NSLock()
+    private static weak var active_controller:NavilIMEInputController?
+    static var active:NavilIMEInputController? {
+        active_lock.lock()
+        defer { active_lock.unlock() }
+        return active_controller
+    }
+    private static func set_active(_ ctl:NavilIMEInputController?, only_if current:NavilIMEInputController? = nil) {
+        active_lock.lock()
+        defer { active_lock.unlock() }
+        if current == nil || active_controller === current {
+            active_controller = ctl
+        }
+    }
+
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
 
         PrintLog.shared.Log(log: "Server Activated")
+        Self.set_active(self)
         self.hangul = Hangul()
         self.hangul?.Start()
         self.apply_app_lang(client: sender)
@@ -48,6 +66,8 @@ open class NavilIMEInputController: IMKInputController {
         self.update_display(client: sender)
         self.hangul?.Stop()
 
+        // 다른 컨트롤러가 이미 활성화됐다면(deactivate가 늦게 오는 경우) 그쪽을 지우지 않는다.
+        Self.set_active(nil, only_if: self)
         super.deactivateServer(sender)
     }
     
@@ -99,15 +119,6 @@ open class NavilIMEInputController: IMKInputController {
             hangul.Flush()
             self.update_display(client: client)
             return false
-        }
-
-        // SpecialKeyTap이 치환한 이벤트는 keycode가 아니라 문자가 진실이다.
-        // 탭은 모디파이어만 지우고 유니코드를 갈아끼우므로 keycode는 원래 키(예: Cmd+\의 0x2A)
-        // 그대로 남는다. 이걸 아래 key_code 테이블로 재해석하면 ₩ 대신 \ 가 나온다.
-        if let chars = event.characters, SpecialKeyTap.outputs.contains(chars) {
-            hangul.Flush()
-            self.update_display(client: client, additional: chars)
-            return true
         }
 
         // 특정 패턴 입력은 한글로 변환하지 않는다.
@@ -175,6 +186,16 @@ open class NavilIMEInputController: IMKInputController {
         return true
     }
     
+    // SpecialKeyTap이 메인 스레드에서 부른다. 탭은 한글 입력기가 켜져 있으면 특수키 이벤트를
+    // 삼키고 여기로 넘긴다 — 탭이 문자를 바꿔 넣은 이벤트는 입력기의 handle까지 오지 않기
+    // 때문이다(로그로 확인). 조합 중인 글자를 먼저 확정하고 그 뒤에 붙인다.
+    func insert_special(_ output:String) {
+        guard let client = self.client() else { return }
+        self.ensureHangulReady()
+        self.hangul?.Flush()
+        self.update_display(client: client, additional: output)
+    }
+
     func update_display(client:Any!, backspace:Bool = false, additional:String = "") {
         let commit_unicode:[unichar] = self.hangul?.takeCommit() ?? []
         let preedit_unicode:[unichar] = self.hangul?.takePreedit() ?? []
@@ -294,35 +315,8 @@ open class NavilIMEInputController: IMKInputController {
     }
 
     // 특수키(₩, ~, `)는 전역 이벤트 탭이 유일한 처리 경로라 손쉬운 사용 권한이 필요하다.
-    // 권한 안내 팝업을 띄우고, 시스템 설정의 손쉬운 사용 창을 연다.
+    // 실제 권한·탭 상태를 보여주고 설정으로 보내는 상태 창을 연다. (PermissionWindow 참조)
     @objc func grant_special_key_permission(_ sender:Any?) {
-        if SpecialKeyTap.shared.isTrusted {
-            SpecialKeyTap.shared.startIfTrusted()
-            return
-        }
-
-        // OS가 직접 띄우는 시스템 권한 창(가장 확실한 경로)을 먼저 트리거하고,
-        // 손쉬운 사용 설정 창도 연다. 이 둘은 백그라운드 앱(LSBackgroundOnly)에서도 동작한다.
-        SpecialKeyTap.shared.requestPermissionPrompt()
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
-
-        // 설명용 NSAlert. LSBackgroundOnly에서는 창이 앞으로 안 올 수 있어,
-        // 잠깐 활성화 정책을 accessory로 올려 확실히 표시되게 한다.
-        let prevPolicy = NSApp.activationPolicy()
-        NSApp.setActivationPolicy(.accessory)
-        NSApp.activate(ignoringOtherApps: true)
-
-        let alert = NSAlert()
-        alert.messageText = "특수키 전역 입력 권한이 필요합니다"
-        alert.informativeText = "₩, ~, ` 같은 특수키 조합을 쓰려면 "
-            + "‘손쉬운 사용’ 권한이 필요합니다. 한글·영문 어느 입력기에서든 이 권한이 있어야 동작합니다.\n\n"
-            + "열린 시스템 설정의 ‘손쉬운 사용’ 목록에서 NavilIME를 켠 뒤, 입력기를 한 번 "
-            + "전환하거나 다시 로그인하면 적용됩니다."
-        alert.addButton(withTitle: "확인")
-        alert.runModal()
-
-        NSApp.setActivationPolicy(prevPolicy)
+        PermissionWindow.shared.show()
     }
 }

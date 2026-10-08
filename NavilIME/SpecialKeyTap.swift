@@ -9,8 +9,10 @@
 //  입력기까지 내려오지 않기 때문이다. 반면 이 탭은 세션 레벨(headInsertEventTap)이라
 //  AppKit보다 먼저 이벤트를 보고, 모디파이어를 지운 뒤 유니코드를 갈아끼울 수 있다.
 //  그래서 NavilIME가 활성이든(한글) 아니든(영문) 이 탭이 처리한다.
-//  치환된 이벤트는 모디파이어 없는 평범한 키가 되지만 keycode는 원래 키 그대로다.
-//  그래서 IMK 경로는 keycode 대신 event.characters를 봐야 한다 — 아래 outputs 참조.
+//  한글 입력기(NavilIME)가 켜져 있으면 이벤트를 삼키고 입력기에 직접 넘긴다. 문자를 바꿔
+//  넣은 이벤트는 입력기의 handle까지 오지 않아서(로그로 확인), 흘려보내면 아무것도 입력되지
+//  않는다. 입력기는 조합 중인 글자를 확정하고 그 뒤에 문자를 붙인다.
+//  그 밖의 입력 소스(영문 등)에서는 모디파이어를 지우고 문자를 바꿔 넣어 앱으로 흘려보낸다.
 //
 //  동작하려면 App Sandbox가 꺼져 있어야 하고 손쉬운 사용(Accessibility) 권한이
 //  허용돼야 한다. 권한이 없으면 특수키 조합은 어느 입력기에서도 동작하지 않는다.
@@ -45,10 +47,6 @@ class SpecialKeyTap {
         SpecialKeyCombo(keyCode: 0x2A, flag: .maskCommand, output: "₩"), // Cmd+\ → ₩
     ]
 
-    // 탭이 이벤트에 심어 넣는 출력 문자들. IMK 경로가 "이 문자는 keycode가 아니라
-    // event.characters가 진실"임을 판별하는 데 쓴다. (NavilIMEInputController 참조)
-    static let outputs: Set<String> = Set(combos.map { $0.output })
-
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
@@ -64,6 +62,13 @@ class SpecialKeyTap {
 
     var isRunning: Bool {
         return tapThread != nil
+    }
+
+    // 탭이 실제로 만들어져 켜져 있는지. isRunning은 스레드를 띄운 직후부터 참이라
+    // 탭 생성 실패를 가리지 못한다. 권한 상태 창이 "실제로 동작 중"을 보여줄 때 쓴다.
+    var isActive: Bool {
+        guard let tap = eventTap else { return false }
+        return CGEvent.tapIsEnabled(tap: tap)
     }
 
     // 손쉬운 사용 권한이 있으면 탭을 켠다. 권한이 없으면 시스템 권한 요청 다이얼로그를 띄운다.
@@ -89,7 +94,11 @@ class SpecialKeyTap {
         // 전용 스레드의 런루프에서 탭을 돌려 메인 스레드(IMK 입력 경로)와 분리한다.
         let thread = Thread { [weak self] in
             guard let self = self else { return }
-            guard self.createTap() else { return }
+            // 실패하면 tapThread를 비워, 다음 startIfTrusted()에서 다시 시도할 수 있게 한다.
+            guard self.createTap() else {
+                DispatchQueue.main.async { self.tapThread = nil }
+                return
+            }
             self.tapRunLoop = CFRunLoopGetCurrent()
             PrintLog.shared.Log(log: "SpecialKeyTap: started (dedicated thread)")
             CFRunLoopRun()
@@ -172,8 +181,15 @@ class SpecialKeyTap {
             return Unmanaged.passUnretained(event)
         }
 
-        // 모디파이어를 지우고 문자를 갈아끼운다. 이게 IMK 경로가 못 하는 일이고,
-        // 그래서 한글/영문 어느 쪽이든 여기서 끝낸다.
+        // 한글 입력기가 켜져 있으면 이벤트를 삼키고 입력기에 넘긴다. (파일 머리말 참조)
+        // IMK 클라이언트 호출은 메인 스레드에서 해야 한다.
+        if let ctl = NavilIMEInputController.active {
+            let output = combo.output
+            DispatchQueue.main.async { ctl.insert_special(output) }
+            return nil
+        }
+
+        // 그 밖의 입력 소스에서는 모디파이어를 지우고 문자를 갈아끼워 앱으로 흘려보낸다.
         event.flags = CGEventFlags(rawValue: 0)
         let utf16 = Array(combo.output.utf16)
         event.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)

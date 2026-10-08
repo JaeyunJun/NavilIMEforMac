@@ -70,14 +70,16 @@ class HangulMenu {
         }
     }
 
-    // 권한이 있으면 안내 문구만 보여주고(비활성), 없으면 허용 동작을 노출한다.
+    // 실제 권한과 탭 상태를 제목에 보여준다. 어느 상태든 누르면 권한 상태 창이 열린다.
     func refresh_permission_state() {
-        if SpecialKeyTap.shared.isTrusted {
-            permission_item.title = "특수키 전역 입력: 켜짐 ✓"
-            permission_item.isEnabled = false
+        let tap = SpecialKeyTap.shared
+        if !tap.isTrusted {
+            permission_item.title = "특수키 전역 입력: 권한 없음 ❌ — 허용하기…"
+        } else if !tap.isActive {
+            permission_item.title = "특수키 전역 입력: 권한 있음, 탭 꺼짐 ⚠️…"
         } else {
-            permission_item.title = "특수키 전역 입력 권한 허용…"
-            permission_item.isEnabled = true
+            permission_item.title = "특수키 전역 입력: 켜짐 ✓…"
         }
+        permission_item.isEnabled = true
     }
 }

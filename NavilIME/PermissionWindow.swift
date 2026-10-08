@@ -1,0 +1,139 @@
+//
+//  PermissionWindow.swift
+//  NavilIME
+//
+//  특수키 전역 입력(손쉬운 사용) 권한 상태 창.
+//
+//  메뉴 항목만으로는 "실제로 권한이 잡혔는지"를 알기 어렵다. 특히 ad-hoc 서명은 재빌드마다
+//  서명이 바뀌어, 시스템 설정 목록엔 NavilIME가 켜져 있어도 실제로는 권한이 없는 상태가 된다.
+//  그래서 이 창은 시스템 설정의 표시가 아니라 프로세스가 실제로 받은 권한(AXIsProcessTrusted)과
+//  탭이 실제로 돌고 있는지를 보여준다.
+//
+//  창이 떠 있는 동안 1초마다 다시 조회하므로, 시스템 설정에서 켜고 돌아오면 바로 갱신된다.
+//  권한이 잡히는 순간 탭도 켠다.
+//
+
+import Cocoa
+
+class PermissionWindow: NSObject, NSWindowDelegate {
+    static let shared = PermissionWindow()
+
+    private var window: NSWindow?
+    private let status_label = NSTextField(labelWithString: "")
+    private let detail_label = NSTextField(wrappingLabelWithString: "")
+    private let open_button = NSButton(title: "손쉬운 사용 설정 열기", target: nil, action: nil)
+    private var timer: Timer?
+    private var prev_policy: NSApplication.ActivationPolicy = .prohibited
+
+    private override init() {
+        super.init()
+    }
+
+    func show() {
+        if window == nil {
+            window = make_window()
+        }
+
+        // LSBackgroundOnly 앱은 창이 앞으로 오지 않으므로, 떠 있는 동안만 accessory로 올린다.
+        // 이미 떠 있는 창을 다시 부르면 accessory를 원래 값으로 잘못 기억하므로 처음에만 저장한다.
+        if window?.isVisible != true {
+            prev_policy = NSApp.activationPolicy()
+        }
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.activate(ignoringOtherApps: true)
+
+        refresh()
+        window?.center()
+        window?.makeKeyAndOrderFront(nil)
+
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            self?.refresh()
+        }
+    }
+
+    private func make_window() -> NSWindow {
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 200),
+                         styleMask: [.titled, .closable],
+                         backing: .buffered, defer: false)
+        w.title = "NavilIME 특수키 권한"
+        w.isReleasedWhenClosed = false
+        w.level = .floating
+        w.delegate = self
+
+        status_label.font = NSFont.boldSystemFont(ofSize: 15)
+        detail_label.font = NSFont.systemFont(ofSize: 12)
+        detail_label.textColor = .secondaryLabelColor
+        detail_label.preferredMaxLayoutWidth = 380
+
+        open_button.target = self
+        open_button.action = #selector(open_settings)
+        let check_button = NSButton(title: "다시 확인", target: self, action: #selector(check_now))
+        let close_button = NSButton(title: "닫기", target: self, action: #selector(close))
+        close_button.keyEquivalent = "\u{1b}"
+
+        let buttons = NSStackView(views: [open_button, check_button, NSView(), close_button])
+        buttons.orientation = .horizontal
+
+        let stack = NSStackView(views: [status_label, detail_label, buttons])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        stack.edgeInsets = NSEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        buttons.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+
+        w.contentView = stack
+        return w
+    }
+
+    // 실제 권한과 탭 상태를 다시 조회해 표시한다. 권한이 방금 잡혔으면 탭을 켠다.
+    private func refresh() {
+        let tap = SpecialKeyTap.shared
+        if tap.isTrusted {
+            tap.startIfTrusted()
+        }
+
+        if !tap.isTrusted {
+            status_label.stringValue = "❌ 권한 없음 — 특수키 조합이 동작하지 않습니다"
+            detail_label.stringValue = "‘손쉬운 사용 설정 열기’를 눌러 목록에서 NavilIME를 켜세요. "
+                + "켜면 이 창이 자동으로 갱신됩니다.\n\n"
+                + "목록에 NavilIME가 이미 켜져 있는데도 계속 ‘권한 없음’이면, 재빌드로 서명이 "
+                + "바뀐 것입니다. 목록에서 NavilIME를 선택해 −로 지운 뒤 다시 추가하세요."
+            open_button.isEnabled = true
+        } else if !tap.isActive {
+            // 권한 직후에는 탭 스레드가 뜨는 동안 잠깐 이 상태일 수 있다. 다음 조회에서 갱신된다.
+            status_label.stringValue = "⚠️ 권한 있음 — 특수키 탭이 아직 꺼져 있습니다"
+            detail_label.stringValue = "잠시 뒤에도 그대로면 입력기를 한 번 전환하거나 다시 로그인하세요."
+            open_button.isEnabled = true
+        } else {
+            status_label.stringValue = "✅ 권한 있음 — 특수키 조합 동작 중"
+            detail_label.stringValue = "Shift+ESC → ~,  Cmd+ESC → `,  Cmd+\\ → ₩\n"
+                + "한글·영문 어느 입력 소스에서든 동작합니다."
+            open_button.isEnabled = false
+        }
+        HangulMenu.shared.refresh_permission_state()
+    }
+
+    @objc private func open_settings() {
+        // 시스템 권한 창을 띄우면 목록에 NavilIME가 (꺼진 채로) 올라온다. 설정 창도 함께 연다.
+        SpecialKeyTap.shared.requestPermissionPrompt()
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func check_now() {
+        refresh()
+    }
+
+    @objc private func close() {
+        window?.close()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        timer?.invalidate()
+        timer = nil
+        NSApp.setActivationPolicy(prev_policy)
+    }
+}

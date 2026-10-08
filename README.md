@@ -21,12 +21,18 @@
 - **한글/영문 등 입력기 상태와 무관하게** 동작합니다. 조합은 `CGEventTap` 한 경로에서만
   처리합니다 — IMK 입력 경로는 ⌘ 조합을 AppKit의 키 이퀴벌런트 단계에서 뺏겨 아예 받지
   못하므로, 표를 양쪽에 두면 한글 상태에서 `` ` ``와 `₩`가 나오지 않습니다.
+- 한글 상태에서는 탭이 이벤트를 삼키고 NavilIME에 직접 넘깁니다. 조합 중인 글자를
+  먼저 확정한 뒤 그 뒤에 기호를 붙입니다(`한` 조합 중 `Shift+ESC` → `한~`).
+  문자를 바꿔 넣은 이벤트를 흘려보내면 입력기의 `handle`까지 오지 않아 아무것도
+  입력되지 않기 때문입니다. 영문 등 다른 입력 소스에서는 문자를 바꿔 앱으로 흘려보냅니다.
 - 모디파이어는 **정확히 일치**해야 합니다. (`Cmd+Shift+ESC`는 어느 조합에도 걸리지 않음)
 - 따라서 **손쉬운 사용(Accessibility) 권한이 필수**입니다. 권한이 없으면 세 조합 모두
   어느 입력기에서도 동작하지 않습니다.
-  트레이 메뉴 → "특수키 전역 입력 권한 허용…"에서 설정하세요. 권한이 켜지면
-  메뉴 항목이 "특수키 전역 입력: 켜짐 ✓"로 바뀝니다(이 상태에선 클릭해도 안내창이
-  뜨지 않는 것이 정상입니다).
+  트레이 메뉴의 "특수키 전역 입력: …" 항목이 실제 상태(권한 없음 ❌ / 탭 꺼짐 ⚠️ /
+  켜짐 ✓)를 보여주고, 누르면 권한 상태 창이 열립니다. 창에서 손쉬운 사용 설정으로
+  바로 갈 수 있고, 창이 떠 있는 동안 1초마다 다시 조회해 허용 즉시 ✅로 바뀝니다.
+  시스템 설정 목록의 표시가 아니라 프로세스가 실제로 받은 권한을 보여주므로, 목록엔
+  켜져 있는데 ❌이면 서명이 바뀐 것입니다 — 목록에서 지우고(−) 다시 추가하세요.
 - 전역 키 가로채기는 App Sandbox에서 동작하지 않으므로 이 포크는 샌드박스를 끕니다.
   (App Store가 아닌 `~/Library/Input Methods` 직접 설치 방식이라 문제 없음)
 
@@ -160,6 +166,40 @@ security find-certificate -c "Apple Development" -p | openssl x509 -noout -subje
 
 `Local.xcconfig`는 `.gitignore`로 커밋되지 않으므로 개인 Team ID가 저장소에
 남지 않습니다. 파일이 없으면 ad-hoc 서명으로 빌드되며, 실행은 됩니다.
+
+#### Apple 계정 없이: 로컬 자체 서명 인증서
+혼자 쓰는 Mac이라면 자체 서명 인증서로도 권한이 유지됩니다. 서명 신원이
+"번들 ID + 인증서"로 고정되기 때문입니다.
+
+```
+cat > cert.cnf <<'CNF'
+[req]
+distinguished_name = dn
+x509_extensions = ext
+prompt = no
+[dn]
+CN = NavilIME Local Signing
+[ext]
+basicConstraints = critical,CA:false
+keyUsage = critical,digitalSignature
+extendedKeyUsage = critical,codeSigning
+CNF
+openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 -config cert.cnf
+openssl pkcs12 -export -inkey key.pem -in cert.pem -name "NavilIME Local Signing" -out id.p12 -passout pass:tmp
+security import id.p12 -k ~/Library/Keychains/login.keychain-db -P tmp -T /usr/bin/codesign
+rm key.pem id.p12
+```
+
+`Local.xcconfig`:
+```
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = NavilIME Local Signing
+DEVELOPMENT_TEAM =
+```
+
+**주의:** 이 인증서에는 Team ID가 없어서, Hardened Runtime의 라이브러리 검증 때문에
+Debug 빌드가 분리된 `.debug.dylib`를 못 불러와 실행 즉시 죽습니다. Debug로 빌드할
+때는 `ENABLE_DEBUG_DYLIB=NO`를 붙이세요.
 
 ### 설치
 빌드한 `NavilIME.app`을 `~/Library/Input Methods/`에 복사한 뒤, 시스템 설정 →
