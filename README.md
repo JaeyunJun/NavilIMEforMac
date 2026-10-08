@@ -148,63 +148,34 @@ OS가 상태를 알게 됩니다.
 
 ## 빌드 / 설치 (개인용)
 
-### 코드 서명
-손쉬운 사용 권한은 앱의 코드 서명 신원에 묶입니다. 무서명(ad-hoc)으로 빌드하면
-재빌드할 때마다 권한이 초기화될 수 있으므로, 본인 Apple Development 신원으로
-서명하는 것을 권장합니다. **유료 개발자 계정은 필요 없고**, Xcode에 Apple ID를
-추가하면 생기는 무료 Personal Team으로 충분합니다.
-
-1. Xcode → Settings → Accounts 에서 본인 Apple ID 추가 → 무료 Personal Team 생성
-2. `NavilIME/Local.xcconfig.example`을 같은 폴더에 `Local.xcconfig`로 복사
-3. `Local.xcconfig`에 본인 `DEVELOPMENT_TEAM`(Team ID) 입력
-
+### 빌드·설치 (기본)
 ```
-# 본인 Team ID 확인
-security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
-# 출력의 OU=XXXXXXXXXX 가 Team ID
+Tools/build-ime.sh          # Release 빌드 → ~/Library/Input Methods 설치 → 실행 확인
+Tools/build-ime.sh Debug    # 진단용. os_log에 입력 내용이 남으니 평소엔 쓰지 말 것
 ```
+설치 뒤 새 빌드가 실제로 뜨는지 확인하고, 안 뜨면 직전 설치본으로 되돌립니다
+(입력기가 죽으면 그 입력 소스로는 아무것도 칠 수 없으므로).
 
-`Local.xcconfig`는 `.gitignore`로 커밋되지 않으므로 개인 Team ID가 저장소에
-남지 않습니다. 파일이 없으면 ad-hoc 서명으로 빌드되며, 실행은 됩니다.
+처음 한 번은 시스템 설정 → 키보드 → 입력 소스에서 NavilIME를 추가하고, 트레이 메뉴의
+권한 상태 창에서 손쉬운 사용 권한을 허용하세요.
 
-#### Apple 계정 없이: 로컬 자체 서명 인증서
-혼자 쓰는 Mac이라면 자체 서명 인증서로도 권한이 유지됩니다. 서명 신원이
-"번들 ID + 인증서"로 고정되기 때문입니다.
+### 코드 서명 원칙: 로컬 인증서
+손쉬운 사용 권한은 앱의 코드 서명 신원에 묶입니다. ad-hoc 서명은 바이너리 해시가
+신원이라 재빌드할 때마다 권한이 날아갑니다. 그래서 이 저장소는 **로그인 키체인의
+자체 서명 인증서 `NavilIME Local Signing`으로 서명하는 것이 기본값**입니다
+(`NavilIME/Signing.xcconfig`). 신원이 "번들 ID + 인증서"로 고정되어 재빌드해도
+권한이 유지됩니다.
 
-```
-cat > cert.cnf <<'CNF'
-[req]
-distinguished_name = dn
-x509_extensions = ext
-prompt = no
-[dn]
-CN = NavilIME Local Signing
-[ext]
-basicConstraints = critical,CA:false
-keyUsage = critical,digitalSignature
-extendedKeyUsage = critical,codeSigning
-CNF
-openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem -days 3650 -config cert.cnf
-openssl pkcs12 -export -inkey key.pem -in cert.pem -name "NavilIME Local Signing" -out id.p12 -passout pass:tmp
-security import id.p12 -k ~/Library/Keychains/login.keychain-db -P tmp -T /usr/bin/codesign
-rm key.pem id.p12
-```
-
-`Local.xcconfig`:
-```
-CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = NavilIME Local Signing
-DEVELOPMENT_TEAM =
-```
-
-**주의:** 이 인증서에는 Team ID가 없어서, Hardened Runtime의 라이브러리 검증 때문에
-Debug 빌드가 분리된 `.debug.dylib`를 못 불러와 실행 즉시 죽습니다. Debug로 빌드할
-때는 `ENABLE_DEBUG_DYLIB=NO`를 붙이세요.
-
-### 설치
-빌드한 `NavilIME.app`을 `~/Library/Input Methods/`에 복사한 뒤, 시스템 설정 →
-키보드 → 입력 소스에서 NavilIME를 추가하고 재로그인(또는 입력기 재선택)합니다.
-전역 특수키를 쓰려면 손쉬운 사용 권한을 허용하세요(위 "특수키 조합 추가" 참고).
+- 인증서는 키체인에 있으므로 저장소를 지웠다 다시 받아도 그대로 쓰입니다.
+- 없으면 `Tools/setup-signing.sh`가 만듭니다(`build-ime.sh`가 자동으로 부름, 이미 있으면 건너뜀).
+  개인 키는 `codesign`만 쓸 수 있게 제한됩니다.
+- Apple 계정·Xcode 로그인은 필요 없습니다.
+- 인증서를 새로 만들면(다른 Mac, 키체인 초기화 등) 권한을 한 번 다시 허용해야 합니다.
+- 이 인증서에는 Team ID가 없어서, Debug 빌드가 코드를 `.debug.dylib`로 분리하면
+  Hardened Runtime 라이브러리 검증에 걸려 실행 즉시 죽습니다. 그래서
+  `ENABLE_DEBUG_DYLIB = NO`를 기본값에 넣었습니다.
+- 다른 신원(Apple Development 등)을 쓰려면 `NavilIME/Local.xcconfig`로 덮어쓰세요
+  (`Local.xcconfig.example` 참고, `.gitignore` 대상).
 
 ---
 

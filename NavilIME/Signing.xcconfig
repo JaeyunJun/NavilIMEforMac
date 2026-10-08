@@ -1,12 +1,15 @@
 // 코드 서명 설정 — 개인 빌드용 베이스 설정
 //
-// 기본값은 ad-hoc(로컬 전용) 서명이다. 이대로도 빌드/실행은 되지만,
-// 손쉬운 사용(Accessibility) 권한이 재빌드 때마다 초기화될 수 있다.
+// 기본 서명 신원은 로그인 키체인의 자체 서명 인증서 "NavilIME Local Signing"이다.
+// 손쉬운 사용(Accessibility) 권한은 서명 신원에 묶이는데, 이 인증서로 서명하면 신원이
+// "번들 ID + 인증서"로 고정되어 재빌드해도 권한이 유지된다. (ad-hoc은 바이너리 해시가
+// 신원이라 재빌드마다 권한이 날아간다.)
 //
-// 권한을 재빌드 후에도 유지하려면 본인 Apple Development 신원으로 서명해야 한다.
-// 이 폴더에 Local.xcconfig 파일을 만들고(Local.xcconfig.example 참고) 본인
-// DEVELOPMENT_TEAM을 적으면 된다. Local.xcconfig는 .gitignore로 커밋되지 않으므로
-// 개인 Team ID가 저장소에 남지 않는다.
+// 인증서는 키체인에 있으므로 저장소를 지웠다 다시 받아도 그대로 쓰인다.
+// 없으면 Tools/setup-signing.sh 가 만든다(Tools/build-ime.sh 가 자동으로 부른다).
+//
+// Apple Development 신원 등 다른 신원을 쓰려면 이 폴더에 Local.xcconfig 를 만들어
+// 덮어쓴다(Local.xcconfig.example 참고). Local.xcconfig 는 .gitignore 대상이다.
 
 // Xcode는 Apple Development 인증서로 서명할 때 get-task-allow 엔타이틀먼트를 자동으로
 // 주입한다. 이건 "다른 프로세스가 이 앱에 디버거를 붙여도 된다"는 뜻이라, Hardened
@@ -16,9 +19,14 @@
 // Release에서는 주입을 끈다. (Debug는 Xcode 디버깅을 위해 그대로 둔다.)
 CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
 
-CODE_SIGN_STYLE = Automatic
-CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = NavilIME Local Signing
 DEVELOPMENT_TEAM =
+
+// 자체 서명 인증서에는 Team ID가 없다. Hardened Runtime의 라이브러리 검증은 같은 Team ID의
+// 라이브러리만 불러오므로, Debug 빌드가 코드를 .debug.dylib 로 분리하면 실행 즉시
+// "Library missing"으로 죽는다(실측). 분리하지 않는다.
+ENABLE_DEBUG_DYLIB = NO
 
 // 있으면 덮어쓴다(없어도 에러 없음). 항상 마지막에 둔다.
 #include? "Local.xcconfig"
