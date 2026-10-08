@@ -51,13 +51,14 @@ open class NavilIMEInputController: IMKInputController {
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
 
-        Log.debug("Server Activated: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
+        Log.debug("Activated: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
         Self.setActive(self)
+        InputSource.disarmRecovery()
         hangul = Hangul()
     }
 
     override open func deactivateServer(_ sender: Any!) {
-        Log.debug("Server deactivating: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
+        Log.debug("Deactivated: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
 
         // 세션을 정리(super)하기 전에 조합 중이던 글자를 이전 client로 먼저 확정한다.
         // super를 먼저 부르면 포커스가 새 앱으로 넘어간 뒤 commit돼, 그 글자가
@@ -67,6 +68,7 @@ open class NavilIMEInputController: IMKInputController {
 
         // 다른 컨트롤러가 이미 활성화됐다면(deactivate가 늦게 오는 경우) 그쪽을 지우지 않는다.
         Self.setActive(nil, onlyIf: self)
+        InputSource.armRecovery()
         super.deactivateServer(sender)
     }
 
@@ -112,7 +114,7 @@ open class NavilIMEInputController: IMKInputController {
         // 전에 들어온 키다. Raycast처럼 열리면서 영문으로 바꾸는 앱에 바로 타이핑하면 첫 글자가
         // 여기로 온다. 한글로 조합하지 않고 그대로 흘려보낸다. 누가 전환했든 같다.
         // 확인 비용은 키당 약 20~40µs(실측).
-        if !Self.isNavilSelected() {
+        if !InputSource.isNavilSelected() {
             Log.debug("Source already switched away, passing key \(keyCode)")
             hangul.flush()
             updateDisplay(client: client)
@@ -190,13 +192,6 @@ open class NavilIMEInputController: IMKInputController {
         let caret = NSRange(location: (text as NSString).length, length: 0)
         client.setMarkedText(text, selectionRange: caret, replacementRange: noReplacement)
         client.insertText(text, replacementRange: noReplacement)
-    }
-
-    // 시스템의 현재 입력 소스가 NavilIME인가. 다른 프로세스가 바꿔도 바로 반영된다.
-    private static func isNavilSelected() -> Bool {
-        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-              let id = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return false }
-        return Unmanaged<CFString>.fromOpaque(id).takeUnretainedValue() as String == Bundle.main.bundleIdentifier
     }
 
     // 오토마타 결과를 클라이언트에 반영한다. 확정분(+additional)은 insertText로, 조합 중인

@@ -12,6 +12,8 @@
 //    입력기가 조합 중인 글자를 확정하고 그 뒤에 기호를 붙인다(insertSpecial).
 //  - 그 밖(영문 등): 모디파이어를 지우고 문자를 바꿔 넣어 앱으로 흘려보낸다.
 //
+//  모든 키를 보는 자리라, 끊긴 입력 세션을 알아채는 데도 쓴다(InputSource 참조).
+//
 //  동작하려면 App Sandbox가 꺼져 있고 손쉬운 사용(Accessibility) 권한이 있어야 한다.
 //
 //  [스레드] 탭은 전용 스레드의 런루프에서 돈다. 메인 런루프에 걸면 모든 키 입력이 메인
@@ -118,6 +120,13 @@ final class SpecialKeyTap {
         }
 
         guard type == .keyDown else { return Unmanaged.passUnretained(event) }
+
+        // 입력기가 선택됐는데 켜진 입력창이 없는 상태에서 글자 키가 눌리면 세션이 끊긴 것일 수
+        // 있다. 판단과 복구는 메인 스레드에서 한다. (InputSource 참조)
+        if NavilIMEInputController.active == nil,
+           event.flags.intersection([.maskCommand, .maskControl, .maskAlternate]).isEmpty {
+            DispatchQueue.main.async { InputSource.keyPressedWithoutSession() }
+        }
 
         // 조합에 정확히 일치하지 않으면(거의 모든 키) 손대지 않고 즉시 통과한다.
         let keyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
