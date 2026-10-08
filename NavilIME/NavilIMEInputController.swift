@@ -56,7 +56,7 @@ open class NavilIMEInputController: IMKInputController {
     override open func activateServer(_ sender: Any!) {
         super.activateServer(sender)
 
-        Log.debug("Server Activated")
+        Log.debug("Server Activated: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
         Self.setActive(self)
         hangul = Hangul()
         applyAppLang(client: sender)
@@ -72,7 +72,7 @@ open class NavilIMEInputController: IMKInputController {
     }
 
     override open func deactivateServer(_ sender: Any!) {
-        Log.debug("Server deactivating")
+        Log.debug("Server deactivating: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
 
         // 세션을 정리(super)하기 전에 조합 중이던 글자를 이전 client로 먼저 확정한다.
         // super를 먼저 부르면 포커스가 새 앱으로 넘어간 뒤 commit돼, 그 글자가
@@ -118,6 +118,17 @@ open class NavilIMEInputController: IMKInputController {
         // [주의] secure input은 프로세스 전역 참조 카운트라, 어떤 앱이 켜놓고 끄지 않으면
         // 한글이 어디서도 조합되지 않는다. 그 증상이면 화면을 잠갔다 풀면 풀린다.
         if IsSecureEventInputEnabled() || TTYPasswordWatcher.shared.isPasswordPromptActive() {
+            hangul.flush()
+            updateDisplay(client: client)
+            return false
+        }
+
+        // 입력 소스가 이미 다른 것(예: ABC)으로 바뀌었는데, 그 소식이 앱에 닿아 입력기가 꺼지기
+        // 전에 들어온 키다. Raycast처럼 열리면서 영문으로 바꾸는 앱에 바로 타이핑하면 첫 글자가
+        // 여기로 온다. 한글로 조합하지 않고 그대로 흘려보낸다. 누가 전환했든 같다.
+        // 확인 비용은 키당 약 20~40µs(실측).
+        if !AppLangHandler.isNavilSelected() {
+            Log.debug("Source already switched away, passing key \(keyCode)")
             hangul.flush()
             updateDisplay(client: client)
             return false

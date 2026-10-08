@@ -72,16 +72,17 @@ final class AppLangHandler {
     func applyOnActivate(bundleID: String) {
         guard lastApplied != bundleID else { return }
         lastApplied = bundleID
+        Log.debug("AppLang: \(bundleID) lang=\(lang(for: bundleID)) navilSelected=\(Self.isNavilSelected())")
 
         switch lang(for: bundleID) {
         case .unset:
             return
         case .hangul:
-            if Self.currentIsNavil() == false {
+            if !Self.isNavilSelected() {
                 Self.select(Self.navilSource())
             }
         case .english:
-            if Self.currentIsNavil() {
+            if Self.isNavilSelected() {
                 Self.select(Self.asciiLayoutSource())
             }
         }
@@ -92,7 +93,8 @@ final class AppLangHandler {
         return Unmanaged<CFString>.fromOpaque(p).takeUnretainedValue() as String
     }
 
-    private static func currentIsNavil() -> Bool {
+    // 시스템의 현재 입력 소스가 NavilIME인가. 다른 프로세스(예: Raycast)가 바꿔도 바로 반영된다.
+    static func isNavilSelected() -> Bool {
         guard let s = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
               let id = sourceID(s) else { return false }
         return id == (Bundle.main.bundleIdentifier ?? "")
@@ -100,6 +102,7 @@ final class AppLangHandler {
 
     private static func select(_ source: TISInputSource?) {
         guard let source = source else { return }
+        Log.debug("AppLang: select \(sourceID(source) ?? "?")")
         TISSelectInputSource(source)
     }
 
