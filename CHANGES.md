@@ -6,6 +6,17 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-10-08 - 특수키: xterm.js 계열 터미널 대응, 재시작 직후 대응
+
+- Orca 같은 xterm.js 계열 터미널에서 한글 상태 특수키가 깨졌다(`₩`→`|`, `` ` `` 없음,
+  `~`는 조합 중 첫 번째만). 입력기는 매번 정확히 `insertText`했지만(로그로 확인), xterm.js는
+  키가 눌린 채(Shift·⌘) 들어오는 일반 텍스트 입력을 무시하고, 조합 확정으로 들어오는 글자만
+  받는다. 그래서 특수키는 marked text로 올렸다가 바로 확정한다. 일반 앱에서는 결과가 같다.
+- 리팩터링 탓으로 보였지만 리팩터링 이전 빌드도 Orca에서 똑같이 깨졌다. 앞서 Orca에서
+  잘 된다고 확인한 것은 Debug 빌드였다.
+- 입력기 프로세스가 새로 뜬 직후(재설치 등) macOS가 `activateServer` 없이 `handle`을 부르면
+  탭이 한글 상태를 몰랐다. `handle`의 keyDown에서도 활성 컨트롤러로 표시한다.
+
 ## 2026-10-08 - 코드·저장소 정리
 
 - 한글 엔진 재구성. 세벌식 시절의 `Keyboard` 기반 클래스와 옛한글 자모 정의를 없애고

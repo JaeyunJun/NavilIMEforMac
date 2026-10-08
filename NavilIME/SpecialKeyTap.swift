@@ -181,6 +181,8 @@ final class SpecialKeyTap {
             return Unmanaged.passUnretained(event)
         }
 
+        Log.debug("Special key \(keyCode) -> \(combo.output), hangul active: \(NavilIMEInputController.active != nil)")
+
         // 한글 입력기가 켜져 있으면 이벤트를 삼키고 입력기에 넘긴다. (파일 머리말 참조)
         // IMK 클라이언트 호출은 메인 스레드에서 해야 한다.
         if let controller = NavilIMEInputController.active {

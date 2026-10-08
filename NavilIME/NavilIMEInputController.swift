@@ -82,6 +82,9 @@ open class NavilIMEInputController: IMKInputController {
     override open func handle(_ event: NSEvent!, client sender: Any!) -> Bool {
         switch event.type {
         case .keyDown:
+            // 입력기 프로세스가 새로 뜨면(재설치 등) macOS가 activateServer 없이 바로 handle을
+            // 부르기도 한다. 그러면 SpecialKeyTap이 한글 상태를 몰라 특수키가 깨지므로 여기서도 표시한다.
+            Self.setActive(self)
             let eaten = handleKeyDown(event, client: sender)
             if !eaten {
                 commitComposition(sender)
@@ -164,10 +167,25 @@ open class NavilIMEInputController: IMKInputController {
     // SpecialKeyTap이 메인 스레드에서 부른다. 탭은 한글 입력기가 켜져 있으면 특수키 이벤트를
     // 삼키고 여기로 넘긴다 — 탭이 문자를 바꿔 넣은 이벤트는 입력기의 handle까지 오지 않기
     // 때문이다(로그로 확인). 조합 중인 글자를 먼저 확정하고 그 뒤에 붙인다.
+    //
+    // 바로 insertText 하지 않고 marked text로 한 번 올렸다가 확정한다. xterm.js 계열 터미널
+    // (예: Orca)은 키가 눌린 채(Shift·⌘) 들어오는 일반 텍스트 입력을 무시하지만, 조합 확정으로
+    // 들어오는 글자는 받는다. 일반 앱에서는 결과가 같다.
     func insertSpecial(_ output: String) {
-        guard let client = client() else { return }
+        guard let client = client() as? IMKTextInput else {
+            Log.debug("insertSpecial: no client")
+            return
+        }
         hangul.flush()
-        updateDisplay(client: client, additional: output)
+        let commitUnits = hangul.takeCommit()
+        _ = hangul.takePreedit()
+        let text = String(utf16CodeUnits: commitUnits, count: commitUnits.count) + output
+        Log.debug("Special: '\(text)'")
+
+        let noReplacement = NSRange(location: NSNotFound, length: NSNotFound)
+        let caret = NSRange(location: (text as NSString).length, length: 0)
+        client.setMarkedText(text, selectionRange: caret, replacementRange: noReplacement)
+        client.insertText(text, replacementRange: noReplacement)
     }
 
     // 오토마타 결과를 클라이언트에 반영한다. 확정분(+additional)은 insertText로, 조합 중인
