@@ -10,3 +10,6 @@ NavilIME/Local.xcconfig
 # Xcode 사용자별 설정
 xcuserdata/
 *.xcuserstate
+
+# Python
+__pycache__/

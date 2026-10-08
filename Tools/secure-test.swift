@@ -10,8 +10,7 @@
 //  NavilIMEInputController의 IsSecureEventInputEnabled() 분기가 깨졌는지
 //  확인하려면 이런 대역이 필요하다.
 //
-//  사용:  secure-test   → 한글 상태로 abcd 입력
-//  빌드:  Tools/install.sh
+//  사용:  swift Tools/secure-test.swift   → 한글 상태로 abcd 입력
 //
 
 import Carbon

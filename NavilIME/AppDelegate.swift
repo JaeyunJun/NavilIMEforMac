@@ -32,8 +32,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { note in
             guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  let bundle_id = app.bundleIdentifier else { return }
-            AppLangHandler.shared.apply_on_activate(bundle_id: bundle_id)
+                  let bundleID = app.bundleIdentifier else { return }
+            AppLangHandler.shared.applyOnActivate(bundleID: bundleID)
         }
     }
 

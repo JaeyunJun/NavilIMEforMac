@@ -1,5 +1,5 @@
 //
-//  SingletonAppLang.swift
+//  AppLangHandler.swift
 //  NavilIME
 //
 //  앱별 한/영 고정 설정. 지정한 앱에 들어갈 때만 모드를 강제한다.
@@ -30,33 +30,33 @@ enum AppLang: Int {
     }
 }
 
-class AppLangHandler {
+final class AppLangHandler {
     static let shared = AppLangHandler()
 
-    private let db_key = "app_lang_map"
+    private let defaultsKey = "app_lang_map"
     // 지정한 앱만 담는다. 지정 안 한 앱은 키 자체가 없다.
     private var map: [String: Int]
 
     private init() {
-        map = UserDefaults.standard.dictionary(forKey: db_key) as? [String: Int] ?? [:]
+        map = UserDefaults.standard.dictionary(forKey: defaultsKey) as? [String: Int] ?? [:]
     }
 
-    func lang(for bundle_id: String) -> AppLang {
-        return AppLang(rawValue: map[bundle_id] ?? 0) ?? .unset
+    func lang(for bundleID: String) -> AppLang {
+        return AppLang(rawValue: map[bundleID] ?? 0) ?? .unset
     }
 
-    func set(_ lang: AppLang, for bundle_id: String) {
+    func set(_ lang: AppLang, for bundleID: String) {
         if lang == .unset {
-            map.removeValue(forKey: bundle_id)
+            map.removeValue(forKey: bundleID)
         } else {
-            map[bundle_id] = lang.rawValue
+            map[bundleID] = lang.rawValue
         }
-        UserDefaults.standard.set(map, forKey: db_key)
+        UserDefaults.standard.set(map, forKey: defaultsKey)
     }
 
     // 마지막으로 지정값을 적용한 앱. 같은 앱 안에서 사용자가 ⌘Space로 직접 바꾼 것을
     // 되돌리지 않기 위해, '앱이 바뀔 때'만 적용한다. (전환 루프도 이걸로 막힌다.)
-    private var last_applied:String?
+    private var lastApplied: String?
 
     /// 앱이 앞으로 나올 때 지정값을 적용한다.
     ///
@@ -69,62 +69,62 @@ class AppLangHandler {
     ///   영문 지정 + 현재 ABC      → 그대로 둔다. 이미 영문이고, 사용자가 고른
     ///                              입력 소스를 뒤엎을 이유가 없다
     ///   영문 지정 + 현재 NavilIME → 영문
-    func apply_on_activate(bundle_id:String) {
-        guard last_applied != bundle_id else { return }
-        last_applied = bundle_id
+    func applyOnActivate(bundleID: String) {
+        guard lastApplied != bundleID else { return }
+        lastApplied = bundleID
 
-        switch lang(for: bundle_id) {
+        switch lang(for: bundleID) {
         case .unset:
             return
         case .hangul:
-            if Self.current_is_navil() == false {
-                Self.select(Self.navil_source())
+            if Self.currentIsNavil() == false {
+                Self.select(Self.navilSource())
             }
         case .english:
-            if Self.current_is_navil() {
-                Self.select(Self.ascii_layout_source())
+            if Self.currentIsNavil() {
+                Self.select(Self.asciiLayoutSource())
             }
         }
     }
 
-    private static func source_id(_ source:TISInputSource) -> String? {
+    private static func sourceID(_ source: TISInputSource) -> String? {
         guard let p = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return nil }
         return Unmanaged<CFString>.fromOpaque(p).takeUnretainedValue() as String
     }
 
-    private static func current_is_navil() -> Bool {
+    private static func currentIsNavil() -> Bool {
         guard let s = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-              let id = source_id(s) else { return false }
+              let id = sourceID(s) else { return false }
         return id == (Bundle.main.bundleIdentifier ?? "")
     }
 
-    private static func select(_ source:TISInputSource?) {
+    private static func select(_ source: TISInputSource?) {
         guard let source = source else { return }
         TISSelectInputSource(source)
     }
 
-    private static func enabled_sources(ascii_only:Bool) -> [TISInputSource] {
-        var filter:[String: Any] = [
+    private static func enabledSources(asciiOnly: Bool) -> [TISInputSource] {
+        var filter: [String: Any] = [
             kTISPropertyInputSourceCategory as String: kTISCategoryKeyboardInputSource as Any,
             kTISPropertyInputSourceIsSelectCapable as String: true,
             kTISPropertyInputSourceIsEnabled as String: true,
         ]
-        if ascii_only {
+        if asciiOnly {
             filter[kTISPropertyInputSourceIsASCIICapable as String] = true
         }
         return TISCreateInputSourceList(filter as CFDictionary, false)?.takeRetainedValue()
             as? [TISInputSource] ?? []
     }
 
-    private static func navil_source() -> TISInputSource? {
+    private static func navilSource() -> TISInputSource? {
         let me = Bundle.main.bundleIdentifier ?? ""
-        return enabled_sources(ascii_only: false).first { source_id($0) == me }
+        return enabledSources(asciiOnly: false).first { sourceID($0) == me }
     }
 
     /// 영문용. ASCII 가능한 '키보드 레이아웃'만 고른다 — 입력 모드까지 포함하면
     /// 다른 언어 입력기가 걸릴 수 있다. 보통 ABC가 잡힌다.
-    private static func ascii_layout_source() -> TISInputSource? {
-        return enabled_sources(ascii_only: true).first { source in
+    private static func asciiLayoutSource() -> TISInputSource? {
+        return enabledSources(asciiOnly: true).first { source in
             guard let p = TISGetInputSourceProperty(source, kTISPropertyInputSourceType) else { return false }
             let type = Unmanaged<CFString>.fromOpaque(p).takeUnretainedValue() as String
             return type == (kTISTypeKeyboardLayout as String)
@@ -132,7 +132,7 @@ class AppLangHandler {
     }
 
     /// 트레이 메뉴에 보여줄 짧은 이름. "com.apple.Terminal" → "Terminal"
-    static func short_name(_ bundle_id: String) -> String {
-        return bundle_id.components(separatedBy: ".").last ?? bundle_id
+    static func shortName(_ bundleID: String) -> String {
+        return bundleID.components(separatedBy: ".").last ?? bundleID
     }
 }

@@ -6,6 +6,25 @@
 
 원본: [navilera/NavilIMEforMac](https://github.com/navilera/NavilIMEforMac)
 
+## 2026-10-08 - 코드·저장소 정리
+
+- 한글 엔진 재구성. 세벌식 시절의 `Keyboard` 기반 클래스와 옛한글 자모 정의를 없애고
+  `Hangul/`(`Hangul.swift` 엔진, `Jamo.swift` 자모, `Dubeolsik.swift` 배치·조합 규칙)로 정리.
+  호환 자모는 별도 enum(`Hohan`) 대신 각 자모의 `compatibility`로 계산한다.
+- `Hangul`이 키마다 디버그 문자열을 쌓기만 하고 비우지 않던 배열(`debug_commit`/`debug_preedit`)
+  제거. Release에서도 입력 내용이 메모리에 무한히 쌓였다. 이를 쓰던 `Testcases.swift`도 제거
+  (앱에 같이 빌드됐지만 호출하는 곳이 없었다).
+- 재구성 전후 엔진 출력이 같은지 고정 문장과 무작위 20만 타로 비교해 확인했다(완전 일치).
+- `Hangul.Start()/Stop()`과 `ensureHangulReady()` 제거. 엔진은 항상 준비 상태다.
+- `Hotfix`의 원형 스택을 단순 배열로 교체(동작 동일).
+- 이름 규칙을 Swift 표준으로 통일(snake_case 제거), 파일명을 타입과 맞춤
+  (`SingletonMenu` → `HangulMenu`, `SingletonAppLang` → `AppLangHandler`,
+  `SingletonHotfix` → `Hotfix`, `SingletonPrintLog` → `Log`).
+- 저장소에서 제거: 원작자의 옛 배포본(`Release/`), 원본 README 이미지(`Stuff/`, `install.png`),
+  옛 설치 스크립트(`install.sh`, `uninstall.sh`), `secure-run`과 셸 래퍼·설치 스크립트
+  (암호 프롬프트는 앱이 자동 감지), 실수로 커밋된 `xcuserdata`·`__pycache__`.
+  README에 통째로 들어 있던 원본 README는 원작자 저장소 링크로 대체.
+
 ## 2026-10-08 - 한글 상태 특수키 수정, 권한 상태 창
 
 - 한글(NavilIME) 상태에서 `Shift+ESC`/`Cmd+ESC`/`Cmd+\`가 아무것도 입력하지 않던 문제를 고쳤다.

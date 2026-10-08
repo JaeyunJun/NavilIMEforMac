@@ -33,7 +33,7 @@ struct SpecialKeyCombo {
     let output: String
 }
 
-class SpecialKeyTap {
+final class SpecialKeyTap {
     static let shared = SpecialKeyTap()
 
     // 조합 매칭에 쓰는 모디파이어. 이 마스크로 걸러낸 뒤 '정확히 일치'를 요구하므로
@@ -87,7 +87,7 @@ class SpecialKeyTap {
     func start() {
         guard tapThread == nil else { return }
         guard isTrusted else {
-            PrintLog.shared.Log(log: "SpecialKeyTap: not trusted, tap not created")
+            Log.debug("SpecialKeyTap: not trusted, tap not created")
             return
         }
 
@@ -100,10 +100,10 @@ class SpecialKeyTap {
                 return
             }
             self.tapRunLoop = CFRunLoopGetCurrent()
-            PrintLog.shared.Log(log: "SpecialKeyTap: started (dedicated thread)")
+            Log.debug("SpecialKeyTap: started (dedicated thread)")
             CFRunLoopRun()
             self.teardownTap()
-            PrintLog.shared.Log(log: "SpecialKeyTap: stopped")
+            Log.debug("SpecialKeyTap: stopped")
         }
         thread.name = "io.navilera.NavilIME.SpecialKeyTap"
         thread.qualityOfService = .userInteractive
@@ -139,7 +139,7 @@ class SpecialKeyTap {
             },
             userInfo: refcon
         ) else {
-            PrintLog.shared.Log(log: "SpecialKeyTap: tapCreate failed")
+            Log.debug("SpecialKeyTap: tapCreate failed")
             return false
         }
 
@@ -183,9 +183,9 @@ class SpecialKeyTap {
 
         // 한글 입력기가 켜져 있으면 이벤트를 삼키고 입력기에 넘긴다. (파일 머리말 참조)
         // IMK 클라이언트 호출은 메인 스레드에서 해야 한다.
-        if let ctl = NavilIMEInputController.active {
+        if let controller = NavilIMEInputController.active {
             let output = combo.output
-            DispatchQueue.main.async { ctl.insert_special(output) }
+            DispatchQueue.main.async { controller.insertSpecial(output) }
             return nil
         }
 

@@ -15,15 +15,15 @@
 
 import Cocoa
 
-class PermissionWindow: NSObject, NSWindowDelegate {
+final class PermissionWindow: NSObject, NSWindowDelegate {
     static let shared = PermissionWindow()
 
     private var window: NSWindow?
-    private let status_label = NSTextField(labelWithString: "")
-    private let detail_label = NSTextField(wrappingLabelWithString: "")
-    private let open_button = NSButton(title: "손쉬운 사용 설정 열기", target: nil, action: nil)
+    private let statusLabel = NSTextField(labelWithString: "")
+    private let detailLabel = NSTextField(wrappingLabelWithString: "")
+    private let openButton = NSButton(title: "손쉬운 사용 설정 열기", target: nil, action: nil)
     private var timer: Timer?
-    private var prev_policy: NSApplication.ActivationPolicy = .prohibited
+    private var previousPolicy: NSApplication.ActivationPolicy = .prohibited
 
     private override init() {
         super.init()
@@ -31,13 +31,13 @@ class PermissionWindow: NSObject, NSWindowDelegate {
 
     func show() {
         if window == nil {
-            window = make_window()
+            window = makeWindow()
         }
 
         // LSBackgroundOnly 앱은 창이 앞으로 오지 않으므로, 떠 있는 동안만 accessory로 올린다.
         // 이미 떠 있는 창을 다시 부르면 accessory를 원래 값으로 잘못 기억하므로 처음에만 저장한다.
         if window?.isVisible != true {
-            prev_policy = NSApp.activationPolicy()
+            previousPolicy = NSApp.activationPolicy()
         }
         NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
@@ -52,7 +52,7 @@ class PermissionWindow: NSObject, NSWindowDelegate {
         }
     }
 
-    private func make_window() -> NSWindow {
+    private func makeWindow() -> NSWindow {
         let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 420, height: 200),
                          styleMask: [.titled, .closable],
                          backing: .buffered, defer: false)
@@ -61,21 +61,21 @@ class PermissionWindow: NSObject, NSWindowDelegate {
         w.level = .floating
         w.delegate = self
 
-        status_label.font = NSFont.boldSystemFont(ofSize: 15)
-        detail_label.font = NSFont.systemFont(ofSize: 12)
-        detail_label.textColor = .secondaryLabelColor
-        detail_label.preferredMaxLayoutWidth = 380
+        statusLabel.font = NSFont.boldSystemFont(ofSize: 15)
+        detailLabel.font = NSFont.systemFont(ofSize: 12)
+        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.preferredMaxLayoutWidth = 380
 
-        open_button.target = self
-        open_button.action = #selector(open_settings)
-        let check_button = NSButton(title: "다시 확인", target: self, action: #selector(check_now))
-        let close_button = NSButton(title: "닫기", target: self, action: #selector(close))
-        close_button.keyEquivalent = "\u{1b}"
+        openButton.target = self
+        openButton.action = #selector(openSettings)
+        let checkButton = NSButton(title: "다시 확인", target: self, action: #selector(checkNow))
+        let closeButton = NSButton(title: "닫기", target: self, action: #selector(close))
+        closeButton.keyEquivalent = "\u{1b}"
 
-        let buttons = NSStackView(views: [open_button, check_button, NSView(), close_button])
+        let buttons = NSStackView(views: [openButton, checkButton, NSView(), closeButton])
         buttons.orientation = .horizontal
 
-        let stack = NSStackView(views: [status_label, detail_label, buttons])
+        let stack = NSStackView(views: [statusLabel, detailLabel, buttons])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 12
@@ -95,27 +95,27 @@ class PermissionWindow: NSObject, NSWindowDelegate {
         }
 
         if !tap.isTrusted {
-            status_label.stringValue = "❌ 권한 없음 — 특수키 조합이 동작하지 않습니다"
-            detail_label.stringValue = "‘손쉬운 사용 설정 열기’를 눌러 목록에서 NavilIME를 켜세요. "
+            statusLabel.stringValue = "❌ 권한 없음 — 특수키 조합이 동작하지 않습니다"
+            detailLabel.stringValue = "‘손쉬운 사용 설정 열기’를 눌러 목록에서 NavilIME를 켜세요. "
                 + "켜면 이 창이 자동으로 갱신됩니다.\n\n"
                 + "목록에 NavilIME가 이미 켜져 있는데도 계속 ‘권한 없음’이면, 재빌드로 서명이 "
                 + "바뀐 것입니다. 목록에서 NavilIME를 선택해 −로 지운 뒤 다시 추가하세요."
-            open_button.isEnabled = true
+            openButton.isEnabled = true
         } else if !tap.isActive {
             // 권한 직후에는 탭 스레드가 뜨는 동안 잠깐 이 상태일 수 있다. 다음 조회에서 갱신된다.
-            status_label.stringValue = "⚠️ 권한 있음 — 특수키 탭이 아직 꺼져 있습니다"
-            detail_label.stringValue = "잠시 뒤에도 그대로면 입력기를 한 번 전환하거나 다시 로그인하세요."
-            open_button.isEnabled = true
+            statusLabel.stringValue = "⚠️ 권한 있음 — 특수키 탭이 아직 꺼져 있습니다"
+            detailLabel.stringValue = "잠시 뒤에도 그대로면 입력기를 한 번 전환하거나 다시 로그인하세요."
+            openButton.isEnabled = true
         } else {
-            status_label.stringValue = "✅ 권한 있음 — 특수키 조합 동작 중"
-            detail_label.stringValue = "Shift+ESC → ~,  Cmd+ESC → `,  Cmd+\\ → ₩\n"
+            statusLabel.stringValue = "✅ 권한 있음 — 특수키 조합 동작 중"
+            detailLabel.stringValue = "Shift+ESC → ~,  Cmd+ESC → `,  Cmd+\\ → ₩\n"
                 + "한글·영문 어느 입력 소스에서든 동작합니다."
-            open_button.isEnabled = false
+            openButton.isEnabled = false
         }
-        HangulMenu.shared.refresh_permission_state()
+        HangulMenu.shared.refreshPermissionState()
     }
 
-    @objc private func open_settings() {
+    @objc private func openSettings() {
         // 시스템 권한 창을 띄우면 목록에 NavilIME가 (꺼진 채로) 올라온다. 설정 창도 함께 연다.
         SpecialKeyTap.shared.requestPermissionPrompt()
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
@@ -123,7 +123,7 @@ class PermissionWindow: NSObject, NSWindowDelegate {
         }
     }
 
-    @objc private func check_now() {
+    @objc private func checkNow() {
         refresh()
     }
 
@@ -134,6 +134,6 @@ class PermissionWindow: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         timer?.invalidate()
         timer = nil
-        NSApp.setActivationPolicy(prev_policy)
+        NSApp.setActivationPolicy(previousPolicy)
     }
 }
