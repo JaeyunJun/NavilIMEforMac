@@ -25,16 +25,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // 터미널 암호 프롬프트(sudo/ssh/git 등) 감시 시작.
         // 권한이 필요 없고, tty의 termios만 읽는다.
         TTYPasswordWatcher.shared.start()
-
-        // 앱 전환 감시. 입력 소스가 ABC면 activateServer가 안 오므로, 앱별 한/영 지정을
-        // 적용하려면 여기서 받아야 한다. 권한 불필요.
-        NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
-        ) { note in
-            guard let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
-                  let bundleID = app.bundleIdentifier else { return }
-            AppLangHandler.shared.applyOnActivate(bundleID: bundleID)
-        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

@@ -28,11 +28,6 @@ open class NavilIMEInputController: IMKInputController {
 
     private var hangul = Hangul()
 
-    // 마지막으로 입력을 받은 클라이언트의 번들 ID. menu()에는 클라이언트가 넘어오지
-    // 않으므로, 트레이 메뉴가 "이 앱"을 알려면 여기에 남겨둬야 한다.
-    // 컨트롤러는 클라이언트마다 새로 만들어지므로 static이어야 한다.
-    static var lastClientBundleID: String?
-
     // 지금 입력을 받고 있는 컨트롤러. SpecialKeyTap(탭 스레드)이 "한글 입력기가 켜져 있나"를
     // 판단하고 특수키를 넘겨주는 데 쓴다. 탭 스레드와 메인 스레드가 함께 만지므로 잠금으로 보호한다.
     private static let activeLock = NSLock()
@@ -59,16 +54,6 @@ open class NavilIMEInputController: IMKInputController {
         Log.debug("Server Activated: \((sender as? IMKTextInput)?.bundleIdentifier() ?? "?")")
         Self.setActive(self)
         hangul = Hangul()
-        applyAppLang(client: sender)
-    }
-
-    // Raycast 같은 런처는 '비활성화 패널'로 떠서 앱 활성화 알림이 오지 않는 경우가 있다.
-    // 그때는 IMK가 새 클라이언트로 입력기를 활성화하는 이 경로가 유일한 신호다.
-    // 같은 앱 안에서의 재활성화(⌘Space로 직접 전환)는 AppLangHandler가 걸러낸다.
-    private func applyAppLang(client: Any!) {
-        guard let bundleID = (client as? IMKTextInput)?.bundleIdentifier() else { return }
-        Self.lastClientBundleID = bundleID
-        AppLangHandler.shared.applyOnActivate(bundleID: bundleID)
     }
 
     override open func deactivateServer(_ sender: Any!) {
@@ -127,7 +112,7 @@ open class NavilIMEInputController: IMKInputController {
         // 전에 들어온 키다. Raycast처럼 열리면서 영문으로 바꾸는 앱에 바로 타이핑하면 첫 글자가
         // 여기로 온다. 한글로 조합하지 않고 그대로 흘려보낸다. 누가 전환했든 같다.
         // 확인 비용은 키당 약 20~40µs(실측).
-        if !AppLangHandler.isNavilSelected() {
+        if !Self.isNavilSelected() {
             Log.debug("Source already switched away, passing key \(keyCode)")
             hangul.flush()
             updateDisplay(client: client)
@@ -207,6 +192,13 @@ open class NavilIMEInputController: IMKInputController {
         client.insertText(text, replacementRange: noReplacement)
     }
 
+    // 시스템의 현재 입력 소스가 NavilIME인가. 다른 프로세스가 바꿔도 바로 반영된다.
+    private static func isNavilSelected() -> Bool {
+        guard let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+              let id = TISGetInputSourceProperty(source, kTISPropertyInputSourceID) else { return false }
+        return Unmanaged<CFString>.fromOpaque(id).takeUnretainedValue() as String == Bundle.main.bundleIdentifier
+    }
+
     // 오토마타 결과를 클라이언트에 반영한다. 확정분(+additional)은 insertText로, 조합 중인
     // 글자는 setMarkedText로 보낸다.
     private func updateDisplay(client: Any!, backspace: Bool = false, additional: String = "") {
@@ -264,7 +256,6 @@ open class NavilIMEInputController: IMKInputController {
         // 권한이 방금 허용됐다면 탭을 켜고, 메뉴 표시 상태도 갱신한다.
         SpecialKeyTap.shared.startIfTrusted()
         HangulMenu.shared.refreshPermissionState()
-        HangulMenu.shared.refreshAppLangState()
         return HangulMenu.shared.menu
     }
 
@@ -272,22 +263,6 @@ open class NavilIMEInputController: IMKInputController {
     // 메뉴 항목의 action은 NSMenu가 어디 있든 반드시 이 컨트롤러에 있어야 한다.
     // sender도 NSMenuItem이 아니라 IMK가 만든 Dictionary이고, 항목은
     // sender["IMKCommandMenuItem"]에 들어 있다. (공식 문서에 없음, 원작자가 찾아낸 것)
-
-    // 지금 입력 중인 앱의 한/영을 고정하거나 해제한다. 고른 즉시 반영된다.
-    @objc func selectAppLang(_ sender: Any?) {
-        // 조합 중이던 글자를 지금 앱에 확정한다. 버퍼에만 옮겨 두면 다음 키 입력 때
-        // (다른 앱일 수도 있는 곳에) 뒤늦게 튀어나온다.
-        commitComposition(client())
-        guard let dict = sender as? [String: Any],
-              let item = dict["IMKCommandMenuItem"] as? NSMenuItem,
-              let bundleID = Self.lastClientBundleID,
-              let lang = AppLang(rawValue: item.tag) else {
-            return
-        }
-        AppLangHandler.shared.set(lang, for: bundleID)
-        HangulMenu.shared.refreshAppLangState()
-        AppLangHandler.shared.applyOnActivate(bundleID: bundleID)
-    }
 
     // 특수키(₩, ~, `)는 전역 이벤트 탭이 유일한 처리 경로라 손쉬운 사용 권한이 필요하다.
     // 실제 권한·탭 상태를 보여주고 설정으로 보내는 상태 창을 연다. (PermissionWindow 참조)

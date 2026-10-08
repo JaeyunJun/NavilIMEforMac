@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		CF3237BD28D1AACE008941FE /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3237BC28D1AACE008941FE /* Log.swift */; };
-		CF34BD8B29D6C0A200F6BB02 /* AppLangHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF34BD8A29D6C0A200F6FF02 /* AppLangHandler.swift */; };
 		CF39BCA228C42D7200CB35AE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF39BCA128C42D7200CB35AE /* AppDelegate.swift */; };
 		CF39BCA428C42D7300CB35AE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF39BCA328C42D7300CB35AE /* Assets.xcassets */; };
 		CF39BCA728C42D7300CB35AE /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = CF39BCA528C42D7300CB35AE /* MainMenu.xib */; };
@@ -26,7 +25,6 @@
 
 /* Begin PBXFileReference section */
 		CF3237BC28D1AACE008941FE /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
-		CF34BD8A29D6C0A200F6FF02 /* AppLangHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLangHandler.swift; sourceTree = "<group>"; };
 		CF39BC9E28C42D7200CB35AE /* NavilIME.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavilIME.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF39BCA128C42D7200CB35AE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		CF39BCA328C42D7300CB35AE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -87,7 +85,6 @@
 				CFA10B04000000000000A005 /* PermissionWindow.swift */,
 				CFA10B00000000000000FF01 /* TTYPasswordWatcher.swift */,
 				CF482861291A21DD0020EC2B /* Hotfix.swift */,
-				CF34BD8A29D6C0A200F6FF02 /* AppLangHandler.swift */,
 				CF39BCA328C42D7300CB35AE /* Assets.xcassets */,
 				CF39BCA528C42D7300CB35AE /* MainMenu.xib */,
 				CF39BCA828C42D7300CB35AE /* NavilIME.entitlements */,
@@ -183,7 +180,6 @@
 				CF6561FD28D1AE590085AC8D /* Jamo.swift in Sources */,
 				CF39BCA228C42D7200CB35AE /* AppDelegate.swift in Sources */,
 				CF3237BD28D1AACE008941FE /* Log.swift in Sources */,
-				CF34BD8B29D6C0A200F6BB02 /* AppLangHandler.swift in Sources */,
 				CF482862291A21DD0020EC2B /* Hotfix.swift in Sources */,
 				CF6561F928D1AE240085AC8D /* Hangul.swift in Sources */,
 				CF714A5B28E6C273000CBDEE /* HangulMenu.swift in Sources */,
