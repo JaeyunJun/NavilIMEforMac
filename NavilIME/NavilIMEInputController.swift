@@ -11,8 +11,14 @@ import Carbon
 @objc(NavilIMEInputController)
 open class NavilIMEInputController: IMKInputController {
     // keycode → ASCII. 인덱스가 keycode다. 범위를 넘는 keycode(ESC, 화살표 등)는 그대로 흘려보낸다.
-    private static let keyMap = Array("asdfhgzxcv\tbqweryt123465=97-80]ou[ip\tlj'k;\\,/nm.\t `")
-    private static let shiftKeyMap = Array("ASDFHGZXCV\tBQWERYT!@#$^%+(&_*)}OU{IP\tLJ\"K:|<?NM>\t ~")
+    // 빈칸(nil)은 문자가 아닌 키다: 10 ISO 배열의 §, 36 Return, 48 Tab.
+    private static let keyMap = charMap("asdfhgzxcv bqweryt123465=97-80]ou[ip lj'k;\\,/nm. ␣`")
+    private static let shiftKeyMap = charMap("ASDFHGZXCV BQWERYT!@#$^%+(&_*)}OU{IP LJ\"K:|<?NM> ␣~")
+
+    // 표를 한눈에 보려고 공백을 '문자 없음', ␣를 스페이스 바로 적었다.
+    private static func charMap(_ layout: String) -> [Character?] {
+        return layout.map { $0 == " " ? nil : ($0 == "␣" ? " " : $0) }
+    }
 
     private enum KeyCode {
         static let enter: UInt16 = 0x24
@@ -146,14 +152,16 @@ open class NavilIMEInputController: IMKInputController {
             return eaten
         }
 
-        guard Int(keyCode) < Self.keyMap.count else {
+        let index = Int(keyCode)
+        guard index < Self.keyMap.count,
+              let char = flags.contains(.shift) ? Self.shiftKeyMap[index] : Self.keyMap[index] else {
             Log.debug("Bypassed keycode: \(keyCode)")
             hangul.flush()
             updateDisplay(client: client)
             return false
         }
 
-        let key = String(flags.contains(.shift) ? Self.shiftKeyMap[Int(keyCode)] : Self.keyMap[Int(keyCode)])
+        let key = String(char)
         if hangul.process(key) {
             updateDisplay(client: client)
         } else {
@@ -256,7 +264,9 @@ open class NavilIMEInputController: IMKInputController {
 
     // 지금 입력 중인 앱의 한/영을 고정하거나 해제한다. 고른 즉시 반영된다.
     @objc func selectAppLang(_ sender: Any?) {
-        hangul.flush()
+        // 조합 중이던 글자를 지금 앱에 확정한다. 버퍼에만 옮겨 두면 다음 키 입력 때
+        // (다른 앱일 수도 있는 곳에) 뒤늦게 튀어나온다.
+        commitComposition(client())
         guard let dict = sender as? [String: Any],
               let item = dict["IMKCommandMenuItem"] as? NSMenuItem,
               let bundleID = Self.lastClientBundleID,
